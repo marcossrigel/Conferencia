@@ -1,37 +1,36 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
-include_once("config.php");
+include_once("config.php"); // define $conn
 
 $erro_login = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $cpf = $_POST['cpf'];
-    $senha = $_POST['senha'];
+   $cpf = $_POST['cpf'] ?? '';
 
-    $sql = "SELECT * FROM fornecedores WHERE cpf = ?";
-    $stmt = mysqli_prepare($conexao, $sql);
-    mysqli_stmt_bind_param($stmt, "s", $cpf);
-    mysqli_stmt_execute($stmt);
-    $resultado = mysqli_stmt_get_result($stmt);
+   $query = "SELECT * FROM usuarios WHERE cpf = ?";
+   $stmt = $conn->prepare($query); // CORRIGIDO AQUI
+   $stmt->bind_param("s", $cpf);
+   $stmt->execute();
+   $resultado = $stmt->get_result();
 
-    if ($usuario = mysqli_fetch_assoc($resultado)) {
-        if (password_verify($senha, $usuario['senha'])) {
-            $_SESSION['id_fornecedor'] = $usuario['id'];
-            $_SESSION['fornecedor'] = $usuario['fornecedor'];
-            $_SESSION['tipo_usuario'] = $usuario['tipo'];
+   if ($resultado->num_rows === 1) {
+       $user = $resultado->fetch_assoc();
+       $_SESSION['id_usuario'] = $user['id']; // CORRIGIDO (era id_fornecedor)
+       $_SESSION['nome'] = $user['nome'];
+       $_SESSION['tipo_usuario'] = $user['tipo'];
 
-            header("Location: home.php");
-            exit;
-        }
-        else {
-            $erro_login = "Senha incorreta.";
-        }
-    } 
-    else {
-        $erro_login = "Usuário não encontrado.";
-    }
+       header("Location: home.php");
+       exit;
+   } else {
+       $erro_login = "CPF não encontrado.";
+   }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -181,13 +180,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
   
   <div class="container">
-    <img src="logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">
+    <img src="logo.jpg" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">
     <div class="login-container">
       <div class="main-title">Entrar</div>
       
       <form class="login-form" method="post">
         <input type="text" id="cpf" name="cpf" placeholder="CPF" required>
-        <input type="password" id="senha" name="senha" placeholder="Senha" required>
         <div class="divider"></div>
         <button type="submit" class="btn btn-entrar">Entrar</button>
       </form>

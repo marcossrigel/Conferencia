@@ -1,28 +1,30 @@
 <?php
-  session_start();
-  include_once("config.php");
+session_start();
+include_once("config.php");
 
-  if (!isset($_SESSION['id_fornecedor'])) {
-      header("Location: index.php");
-      exit;
-  }
+if (!isset($_SESSION['id_fornecedor'])) {
+    header("Location: index.php");
+    exit;
+}
 
-  $id_fornecedor = $_SESSION['id_fornecedor'];
-  $tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
+$id_fornecedor = $_SESSION['id_fornecedor'];
+$tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
 
-  if ($tipo_usuario === 'admin') {
+if ($tipo_usuario === 'admin') {
     $query = "SELECT * FROM entregas ORDER BY id DESC";
-    $stmt = $conexao->prepare($query);
-    $stmt->execute(); // ← ESSENCIAL AQUI
-    
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+
 } else {
-    $query = "SELECT * FROM entregas WHERE id_fornecedores = ? ORDER BY id DESC";
-    $stmt = $conexao->prepare($query);
+    $query = "SELECT * FROM entregas WHERE id_fornecedor = ? ORDER BY id DESC";
+    $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $id_fornecedor);
     $stmt->execute();
 }
+
 $resultado = $stmt->get_result();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -50,6 +52,24 @@ $resultado = $stmt->get_result();
       text-align: center;
       margin-bottom: 20px;
       color: #000;
+    }
+    
+    .btn-acao {
+      display: inline-block;
+      background-color: #4da6ff;
+      color: white;
+      padding: 10px 18px;
+      margin: 5px 8px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 15px;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-acao:hover {
+      background-color: #3399ff;
     }
 
     .accordion {
@@ -173,8 +193,9 @@ $resultado = $stmt->get_result();
     </button>
 
     <div class="panel">
-      <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['responsavel_recebimento']) ?></p>
-      <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quantidade_pedida']) ?></p>
+      <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome']) ?></p>
+      <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quantidade']) ?></p>
+
       <p><strong>Peso Etiqueta:</strong> <?= htmlspecialchars($entrega['peso_etiqueta']) ?> | 
          <strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_balanca']) ?></p>
       <p><strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
@@ -196,11 +217,13 @@ $resultado = $stmt->get_result();
       <?php if (!empty($entrega['foto'])): ?>
     <p><strong>Foto:</strong><br><img src="uploads/<?= $entrega['foto'] ?>" width="200" style="margin-top:10px;"></p>
     <?php endif; ?>
-    <?php if (!empty($entrega['assinatura_base64'])): ?>
+
+    <?php if (!empty($entrega['assinatura'])): ?>
       <p><strong>Assinatura:</strong><br>
-        <img src="uploads/<?= htmlspecialchars($entrega['assinatura_base64']) ?>" width="200">
+        <img src="uploads/<?= htmlspecialchars($entrega['assinatura']) ?>" width="200">
       </p>
     <?php endif; ?>
+
 
     <button 
       type="button"
@@ -213,10 +236,12 @@ $resultado = $stmt->get_result();
     </div>
     <?php endwhile; ?>
     
-    <p>
-      <a href="gerar_pdf.php" target="_blank">📄 Gerar PDF</a><br>
-      <a href="exportar_csv.php" class="btn">📥 Exportar CSV</a>
-    </p>
+    <?php if ($tipo_usuario === 'admin'): ?>
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="gerar_pdf.php" target="_blank" class="btn-acao">📄 Gerar PDF</a>
+        <a href="exportar_csv.php" class="btn-acao">📥 Exportar CSV</a>
+      </div>
+    <?php endif; ?>
 
   <div class="botao-voltar">
     <button onclick="window.location.href='home.php';">&lt; Voltar para Home</button>

@@ -1,63 +1,87 @@
 <?php
+
 session_start();
-include("config.php");
+include("config.php"); // conexão com o banco
 
 $registro_inserido = false;
+$nome_fornecedor = '';
 
-$assinatura_arquivo = '';
-$assinatura = $_POST['assinatura_base64'] ?? '';
-if (!empty($assinatura)) {
-    $data = explode(',', $assinatura);
-    if (count($data) == 2) {
-        $base64 = base64_decode($data[1]);
-        $assinatura_nome = 'assinatura_' . uniqid() . '.png';
-        file_put_contents('uploads/' . $assinatura_nome, $base64);
-        $assinatura_arquivo = $assinatura_nome;
+// Buscar o nome do usuário logado se ele for fornecedor
+if (isset($_SESSION['id_usuario'])) {
+    $id = $_SESSION['id_usuario'];
+    $sql = "SELECT nome FROM usuarios WHERE id = ? AND tipo = 'fornecedor'";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        $nome_fornecedor = $row['nome'];
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_fornecedor = $_SESSION['id_fornecedor'] ?? null;
-    $fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
+    // Dados principais
+    $id_fornecedor = $_SESSION['id_usuario'] ?? null;
+    $fornecedor = $_POST['fornecedor'] ?? '';
 
-    $responsavel = $_POST['responsavel'] ?? '';
     $produto = $_POST['produto'] ?? '';
-    $quantidade = $_POST['quantidade'] ?? '';
-    $peso_etiqueta = $_POST['peso_etiqueta'] ?? '';
-    $peso_balanca = $_POST['peso_balanca'] ?? '';
-    $tara = $_POST['tara'] ?? '';
-    $peso_liquido = $_POST['peso_liquido'] ?? '';
+    $quantidade = $_POST['quantidade'] ?? 0;
+    $peso_etiqueta = $_POST['peso_etiqueta'] ?? 0;
+    $tara = $_POST['tara'] ?? 0;
+    $peso_balanca = $_POST['peso_balanca'] ?? 0;
+    $peso_liquido = $_POST['peso_liquido'] ?? 0;
+    $diferenca = $_POST['diferenca'] ?? 0;
     $divergencia = $_POST['divergencia'] ?? '';
     $observacoes = $_POST['observacoes'] ?? '';
-    $data_hora = date("Y-m-d H:i:s");
-    $data_registro = date("Y-m-d H:i:s");
 
-    $foto = '';
-    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-        $foto_nome = uniqid() . '_' . $_FILES['foto']['name'];
-        move_uploaded_file($_FILES['foto']['tmp_name'], 'uploads/' . $foto_nome);
-        $foto = $foto_nome;
+    if (!$id_fornecedor) {
+        die("Usuário não autenticado.");
     }
 
-    $stmt = $conexao->prepare("INSERT INTO entregas 
-    (id_fornecedores, fornecedor, responsavel_recebimento, produto, quantidade_pedida, peso_etiqueta, peso_balanca, tara, peso_liquido, divergencia, observacoes, foto, assinatura_base64, data_hora, data_registro)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // Upload da foto
+    $foto_nome = '';
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+        $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+        $foto_nome = 'foto_' . uniqid() . '.' . $ext;
+        move_uploaded_file($_FILES['foto']['tmp_name'], 'uploads/' . $foto_nome);
+    }
 
-    $stmt->bind_param("isssddddddsssss",
-        $id_fornecedor, $fornecedor, $responsavel, $produto, $quantidade, $peso_etiqueta,
-        $peso_balanca, $tara, $peso_liquido, $divergencia,
-        $observacoes, $foto, $assinatura_arquivo, $data_hora, $data_registro);
+    // Processa assinatura (base64)
+    $assinatura_base64 = $_POST['assinatura_base64'] ?? '';
+    $assinatura_nome = '';
+    if (!empty($assinatura_base64)) {
+        $partes = explode(',', $assinatura_base64);
+        if (count($partes) === 2) {
+            $imagem_binaria = base64_decode($partes[1]);
+            $assinatura_nome = 'assinatura_' . uniqid() . '.png';
+            file_put_contents('uploads/' . $assinatura_nome, $imagem_binaria);
+        }
+    }
 
-    $registro_inserido = false;
+    // Inserir no banco
+    $sql = "INSERT INTO entregas (
+        id_fornecedor, nome, produto, quantidade,
+        peso_etiqueta, tara, peso_balanca, peso_liquido,
+        diferenca, divergencia, observacoes, foto, assinatura
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("issidddddssss",
+        $id_fornecedor, $fornecedor, $produto, $quantidade,
+        $peso_etiqueta, $tara, $peso_balanca, $peso_liquido,
+        $diferenca, $divergencia, $observacoes, $foto_nome, $assinatura_nome
+    );
 
     if ($stmt->execute()) {
         $registro_inserido = true;
+    } else {
+        echo "Erro ao inserir: " . $stmt->error;
     }
 
     $stmt->close();
-    $conexao->close();
+    $conn->close();
 }
-$nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
 ?>
 
 <!DOCTYPE html>
@@ -216,10 +240,11 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
       <p style="text-align: right; font-size: 12px; color: gray;">
         Registro em: <?= date("d/m/Y H:i:s") ?>
       </p>
-      <p><strong>Fornecedor:</strong> <?= htmlspecialchars($nome_fornecedor) ?></p>
 
-      <label>Responsável Recebimento</label>
-      <input type="text" name="responsavel" placeholder="Nome">
+      <p><strong>Nome:</strong> <?= htmlspecialchars($nome_fornecedor) ?></p>
+
+      <label>Fornecedor</label>
+      <input type="text" name="fornecedor" placeholder="Nome do fornecedor">
 
       <label>Produto</label>
       <input type="text" name="produto" placeholder="Nome do produto">
@@ -228,10 +253,12 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
       <input type="number" name="quantidade">
 
       <div class="row">
+
         <div class="col">
-          <label>Peso da Balança</label>
-          <input type="number" name="peso_balanca" id="peso_balanca" step="0.01">
+          <label>Peso da Etiqueta</label>
+          <input type="number" name="peso_etiqueta" id="peso_etiqueta" step="0.01">
         </div>
+
         <div class="col">
           <label>tara</label>
           <input type="number" name="tara" id="tara">
@@ -239,19 +266,22 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
       </div>
 
       <div class="row">
+
         <div class="col">
-          <label>Peso Líquido</label>
-          <input type="text" name="peso_liquido" id="peso_liquido" readonly>
+          <label>Peso da Balança</label>
+          <input type="number" name="peso_balanca" id="peso_balanca" step="0.01">
         </div>
-        <div class="col">
-          <label>Peso da Etiqueta</label>
-          <input type="number" name="peso_etiqueta" id="peso_etiqueta" step="0.01">
-        </div>
+
       </div>
 
+      <label>Diferença (Calculada)</label>
+        <div id="diferenca_exibida">0,00</div>
+        <input type="hidden" name="peso_liquido" id="peso_liquido_oculto">
+
+      <input type="hidden" id="diferenca_oculta">
       <label>Divergência</label>
-      <label id="divergencia">---</label>
-      <input type="hidden" name="divergencia" id="divergencia_oculto">
+        <label id="divergencia">---</label>
+        <input type="hidden" name="divergencia" id="divergencia_oculto">
 
       <label>Observações</label>
       <textarea name="observacoes" rows="4" placeholder="Digite aqui..."></textarea>
@@ -292,19 +322,32 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
 
     const pesoEtiquetaInput = document.getElementById('peso_etiqueta');
     const pesoBalancaInput = document.getElementById('peso_balanca');
-    const pesoLiquidoInput = document.getElementById('peso_liquido');
+    const pesoLiquidoInput = document.getElementById('peso_liquido_oculto');
     const divergenciaLabel = document.getElementById('divergencia');
 
     function atualizarDivergencia() {
       const etiqueta = parseFloat(pesoEtiquetaInput.value.replace(',', '.')) || 0;
       const balanca = parseFloat(pesoBalancaInput.value.replace(',', '.')) || 0;
       const tara = parseFloat(taraInput.value.replace(',', '.')) || 0;
+
       const liquido = balanca - tara;
+      const diferenca = etiqueta - balanca - tara;
 
-      pesoLiquidoInput.value = liquido.toFixed(1).replace('.', ',');
+      // Atualiza campo oculto de peso líquido
+      const pesoLiquidoInput = document.getElementById('peso_liquido_oculto');
+      pesoLiquidoInput.value = liquido.toFixed(2);
 
-      const diferenca = etiqueta - balanca;
-      if (diferenca < 0) {
+      // Atualiza exibição de diferença
+      const divDif = document.getElementById('diferenca_exibida');
+      divDif.textContent = diferenca.toFixed(2).replace('.', ',');
+
+      // Atualiza campo oculto para envio no formulário
+      const diferencaOcultaInput = document.getElementById('diferenca_oculta');
+      diferencaOcultaInput.value = diferenca.toFixed(2);
+
+      // Atualiza status de divergência
+      const divergenciaLabel = document.getElementById('divergencia');
+      if (diferenca > 0) {
         divergenciaLabel.textContent = "Não está ok";
         divergenciaLabel.style.color = "red";
       } else {
@@ -329,17 +372,14 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
         return false;
       }
 
-      const etiqueta = parseFloat(pesoEtiquetaInput.value.replace(',', '.')) || 0;
-      const balanca = parseFloat(pesoBalancaInput.value.replace(',', '.')) || 0;
-      const diferenca = etiqueta - balanca;
-
-      document.getElementById('divergencia_oculto').value = diferenca.toFixed(2); // ← valor numérico
+      atualizarDivergencia();
 
       const assinatura = signaturePad.toDataURL();
       document.getElementById('assinatura_base64').value = assinatura;
 
       return true;
     }
+
 
     function saveSignature() {
       document.getElementById('divergencia_oculto').value = divergenciaLabel.textContent;
@@ -357,6 +397,11 @@ $nome_fornecedor = $_SESSION['fornecedor'] ?? 'Não identificado';
     function fecharModal() {
       document.getElementById("sucessoModal").style.display = "none";
     }
+
+    pesoEtiquetaInput.addEventListener('input', atualizarDivergencia);
+    pesoBalancaInput.addEventListener('input', atualizarDivergencia);
+    taraInput.addEventListener('input', atualizarDivergencia);
+
   </script>
 
 <?php if ($registro_inserido): ?>

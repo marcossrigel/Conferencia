@@ -1,13 +1,13 @@
 <?php
-$dbHost = 'localhost';
-$dbUsername = 'root';
-$dbPassword = 'root1234';
-$dbName = 'conferencia';
-$dbPort = 3306; 
+$host = 'localhost';
+$user = 'root';
+$pass = 'root1234';  // ajuste se sua senha for diferente
+$db = 'conferencia';
+$port = 3306;
 
-$conexao = new mysqli($dbHost, $dbUsername, $dbPassword, $dbName, $dbPort);
+$conn = new mysqli($host, $user, $pass, $db, $port);
 
-if ($conexao->connect_error) {
-    die("Erro na conexão: " . $conexao->connect_error);
+if ($conn->connect_error) {
+    die("Erro na conexão: " . $conn->connect_error);
 }
 ?>

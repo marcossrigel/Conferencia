@@ -4,19 +4,19 @@ include_once("config.php");
 $cadastro_sucesso = false;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $fornecedor = $_POST['fornecedor'];
+    $nome = $_POST['nome'];
     $cpf = $_POST['cpf'];
-    $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
-    $telefone = $_POST['telefone'];
+    $tipo = 'fornecedor'; // sempre padrão
 
-    $sql = "INSERT INTO fornecedores (fornecedor, cpf, senha, telefone) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO fornecedores (nome, cpf, tipo) VALUES (?, ?, ?)";
     $stmt = mysqli_prepare($conexao, $sql);
-    mysqli_stmt_bind_param($stmt, "ssss", $fornecedor, $cpf, $senha, $telefone);
+    mysqli_stmt_bind_param($stmt, "sss", $nome, $cpf, $tipo);
 
     if (mysqli_stmt_execute($stmt)) {
         $cadastro_sucesso = true;
     }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -44,6 +44,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       padding: 30px;
       max-width: 500px;
       width: 100%;
+    }
+
+    .voltar-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .btn-voltar {
+      display: inline-block;
+      background-color: #4da6ff;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-voltar:hover {
+      background-color: #3399ff;
     }
 
     .main-title {
@@ -181,25 +201,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <div class="main-title">Cadastro de Usuário</div>
 
   <form method="post" action="cadastro.php">
-    <label>Fornecedor</label>
-    <input type="text" name="fornecedor" required>
+    
+    <label>Nome</label>
+    <input type="text" name="nome" required>
 
     <label>CPF</label>
     <input type="text" name="cpf" required>
 
-    <label>Telefone</label>
-    <input type="text" name="telefone" required>
-
-    <label>Senha</label>
-    <input type="password" name="senha" required>
-
-    <div class="button-group">
-      <button type="submit">Cadastrar</button>
+    <div class="voltar-link">
+      <a href="index.php" class="btn-voltar">< Voltar</a>
     </div>
 
-    <div class="cancelar-link">
-      <a href="index.php">Cancelar</a>
-    </div>
   </form>
 </div>
 
