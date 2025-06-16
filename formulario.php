@@ -1,12 +1,11 @@
 <?php
 
 session_start();
-include("config.php"); // conexão com o banco
+include("config.php");
 
 $registro_inserido = false;
 $nome_fornecedor = '';
 
-// Buscar o nome do usuário logado se ele for fornecedor
 if (isset($_SESSION['id_usuario'])) {
     $id = $_SESSION['id_usuario'];
     $sql = "SELECT nome FROM usuarios WHERE id = ? AND tipo = 'fornecedor'";
@@ -21,7 +20,6 @@ if (isset($_SESSION['id_usuario'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Dados principais
     $id_fornecedor = $_SESSION['id_usuario'] ?? null;
     $fornecedor = $_POST['fornecedor'] ?? '';
 
@@ -39,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Usuário não autenticado.");
     }
 
-    // Upload da foto
     $foto_nome = '';
     if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
         $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
@@ -47,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         move_uploaded_file($_FILES['foto']['tmp_name'], 'uploads/' . $foto_nome);
     }
 
-    // Processa assinatura (base64)
     $assinatura_base64 = $_POST['assinatura_base64'] ?? '';
     $assinatura_nome = '';
     if (!empty($assinatura_base64)) {
@@ -59,19 +55,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Inserir no banco
     $sql = "INSERT INTO entregas (
-        id_fornecedor, nome, produto, quantidade,
+        id_fornecedor, nome_usuario, fornecedor, produto, quantidade,
         peso_etiqueta, tara, peso_balanca, peso_liquido,
         diferenca, divergencia, observacoes, foto, assinatura
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("issidddddssss",
-        $id_fornecedor, $fornecedor, $produto, $quantidade,
+    
+    $stmt->bind_param("isssddddddssss",
+        $id_fornecedor, $nome_fornecedor, $fornecedor, $produto, $quantidade,
         $peso_etiqueta, $tara, $peso_balanca, $peso_liquido,
         $diferenca, $divergencia, $observacoes, $foto_nome, $assinatura_nome
     );
+
 
     if ($stmt->execute()) {
         $registro_inserido = true;

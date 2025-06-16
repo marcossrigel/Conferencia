@@ -2,12 +2,12 @@
 session_start();
 include_once("config.php");
 
-if (!isset($_SESSION['id_fornecedor'])) {
+if (!isset($_SESSION['id_usuario'])) {
     header("Location: index.php");
     exit;
 }
 
-$id_fornecedor = $_SESSION['id_fornecedor'];
+$id_fornecedor = $_SESSION['id_usuario'];
 $tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
 
 if ($tipo_usuario === 'admin') {
@@ -193,37 +193,37 @@ $resultado = $stmt->get_result();
     </button>
 
     <div class="panel">
-      <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome']) ?></p>
-      <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quantidade']) ?></p>
+  <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p>
+  <p><strong>Fornecedor:</strong> <?= htmlspecialchars($entrega['fornecedor']) ?></p>
+  <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quantidade']) ?></p>
 
-      <p><strong>Peso Etiqueta:</strong> <?= htmlspecialchars($entrega['peso_etiqueta']) ?> | 
-         <strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_balanca']) ?></p>
-      <p><strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
-         <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
-      
-      <?php
-        $div = floatval($entrega['divergencia']);
-        $status = $div < 0 ? 'Não está ok' : 'OK';
-        $cor = $div < 0 ? 'red' : 'green';
-      ?>
-      <p>
-        <strong>Divergência:</strong> 
-        <?= number_format($div, 2, ',', '') ?> 
-        <span style="color:<?= $cor ?>; font-weight: bold;">(<?= $status ?>)</span>
-      </p>
-      
-      <p><strong>Observações:</strong> <?= htmlspecialchars($entrega['observacoes']) ?></p>
-      
-      <?php if (!empty($entrega['foto'])): ?>
+  <p><strong>Peso Etiqueta:</strong> <?= htmlspecialchars($entrega['peso_etiqueta']) ?> | 
+     <strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_balanca']) ?></p>
+  <p><strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
+     <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
+
+  <?php
+    $div = floatval($entrega['divergencia']);
+    $status = $div < 0 ? 'Não está ok' : 'OK';
+    $cor = $div < 0 ? 'red' : 'green';
+  ?>
+  <p>
+    <strong>Divergência:</strong> 
+    <?= number_format($div, 2, ',', '') ?> 
+    <span style="color:<?= $cor ?>; font-weight: bold;">(<?= $status ?>)</span>
+  </p>
+
+  <p><strong>Observações:</strong> <?= htmlspecialchars($entrega['observacoes']) ?></p>
+
+  <?php if (!empty($entrega['foto'])): ?>
     <p><strong>Foto:</strong><br><img src="uploads/<?= $entrega['foto'] ?>" width="200" style="margin-top:10px;"></p>
-    <?php endif; ?>
+  <?php endif; ?>
 
-    <?php if (!empty($entrega['assinatura'])): ?>
-      <p><strong>Assinatura:</strong><br>
-        <img src="uploads/<?= htmlspecialchars($entrega['assinatura']) ?>" width="200">
-      </p>
-    <?php endif; ?>
-
+  <?php if (!empty($entrega['assinatura'])): ?>
+    <p><strong>Assinatura:</strong><br>
+      <img src="uploads/<?= htmlspecialchars($entrega['assinatura']) ?>" width="200">
+    </p>
+  <?php endif; ?>
 
     <button 
       type="button"
