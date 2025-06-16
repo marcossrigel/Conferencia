@@ -6,15 +6,22 @@ $cadastro_sucesso = false;
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nome = $_POST['nome'];
     $cpf = $_POST['cpf'];
-    $tipo = 'fornecedor'; // sempre padrão
+    $tipo = 'fornecedor';
 
-    $sql = "INSERT INTO fornecedores (nome, cpf, tipo) VALUES (?, ?, ?)";
-    $stmt = mysqli_prepare($conexao, $sql);
-    mysqli_stmt_bind_param($stmt, "sss", $nome, $cpf, $tipo);
+    $sql = "INSERT INTO usuarios (nome, cpf, tipo) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
 
-    if (mysqli_stmt_execute($stmt)) {
+    if (!$stmt) {
+        die("Erro ao preparar a query: " . $conn->error);
+    }
+
+    $stmt->bind_param("sss", $nome, $cpf, $tipo);
+
+    if ($stmt->execute()) {
         $cadastro_sucesso = true;
     }
+
+    $stmt->close();
 }
 
 ?>
@@ -102,7 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       font-size: 16px;
       font-weight: bold;
       color: #fff;
-      background-color: #4da6ff;
+      background-color: #42b72a; /* tom de verde suave */
       border: none;
       border-radius: 10px;
       cursor: pointer;
@@ -110,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     .button-group button:hover {
-      background-color: #3399ff;
+      background-color: #36a420; /* tom mais escuro ao passar o mouse */
     }
 
     .cancelar-link {
@@ -208,11 +215,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <label>CPF</label>
     <input type="text" name="cpf" required>
 
+    <div class="button-group">
+      <button type="submit">Criar Conta</button>
+    </div>
+
     <div class="voltar-link">
       <a href="index.php" class="btn-voltar">< Voltar</a>
     </div>
 
   </form>
+
+
 </div>
 
 </body>
