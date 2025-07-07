@@ -2,20 +2,27 @@
 session_start();
 include("config.php");
 
-$id_fornecedor = $_SESSION['id_fornecedor'] ?? null;
-$tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
-
-if (!$id_fornecedor && $tipo_usuario !== 'admin') {
+if (!isset($_SESSION['id_usuario'])) {
     die("Acesso negado.");
 }
 
+$id_usuario = $_SESSION['id_usuario'];
+$tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
+
 if ($tipo_usuario === 'admin') {
-    $query = "SELECT * FROM entregas ORDER BY id DESC";
+    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
+              FROM entregas 
+              JJOIN usuarios ON entregas.id_usuario = usuarios.id
+              ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
 } else {
-    $query = "SELECT * FROM entregas WHERE id_fornecedor = ? ORDER BY id DESC";
+    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
+              FROM entregas 
+              JOIN usuarios ON entregas.id_usuario = usuarios.id
+              WHERE entregas.id_usuario = ? 
+              ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $id_fornecedor);
+    $stmt->bind_param("i", $id_usuario);
 }
 
 $stmt->execute();
@@ -26,10 +33,11 @@ header('Content-Disposition: attachment; filename="lista_entregas.csv"');
 $output = fopen('php://output', 'w');
 
 fputcsv($output, [
+    'Responsável',
     'Fornecedor',
     'Produto',
     'Quantidade',
-    'Peso Etiqueta',
+    'Etiquetas',
     'Peso Balança',
     'Tara',
     'Peso Líquido',
@@ -40,18 +48,19 @@ fputcsv($output, [
 ], ';');
 
 while ($linha = $resultado->fetch_assoc()) {
-    $etiqueta = floatval($linha['peso_etiqueta']);
-    $balanca = floatval($linha['peso_balanca']);
+    $etiquetas = $linha['etiquetas'];
+    $balanca = floatval($linha['peso_bruto']);
     $tara = floatval($linha['tara']);
     $liquido = $balanca - $tara;
-    $div = $etiqueta - $balanca;
+    $div = floatval($linha['divergencia']);
     $status = abs($div) < 0.01 ? "OK" : "Divergente";
 
     fputcsv($output, [
-        $linha['nome'],              // nome do fornecedor
+        $linha['nome_usuario'],
+        $linha['fornecedor'],
         $linha['produto'],
-        $linha['quantidade'],
-        number_format($etiqueta, 2, ',', ''),
+        $linha['quant_nf'],
+        $etiquetas,
         number_format($balanca, 2, ',', ''),
         number_format($tara, 2, ',', ''),
         number_format($liquido, 2, ',', ''),

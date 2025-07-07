@@ -3,34 +3,52 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+function validarCPF($cpf) {
+    $cpf = preg_replace('/[^0-9]/', '', $cpf);
+    if (strlen($cpf) != 11 || preg_match('/(\d)\1{10}/', $cpf)) return false;
+
+    for ($t = 9; $t < 11; $t++) {
+        for ($d = 0, $c = 0; $c < $t; $c++) {
+            $d += $cpf[$c] * (($t + 1) - $c);
+        }
+        $d = ((10 * $d) % 11) % 10;
+        if ($cpf[$c] != $d) return false;
+    }
+
+    return true;
+}
+
 session_start();
-include_once("config.php"); // define $conn
+include_once("config.php");
 
 $erro_login = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-   $cpf = $_POST['cpf'] ?? '';
+    $cpf = $_POST['cpf'] ?? '';
 
-   $query = "SELECT * FROM usuarios WHERE cpf = ?";
-   $stmt = $conn->prepare($query); // CORRIGIDO AQUI
-   $stmt->bind_param("s", $cpf);
-   $stmt->execute();
-   $resultado = $stmt->get_result();
+    if (!validarCPF($cpf)) {
+        $erro_login = "CPF inválido.";
+    } else {
+        $query = "SELECT * FROM usuarios WHERE cpf = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("s", $cpf);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
 
-   if ($resultado->num_rows === 1) {
-       $user = $resultado->fetch_assoc();
-       $_SESSION['id_usuario'] = $user['id']; // CORRIGIDO (era id_fornecedor)
-       $_SESSION['nome'] = $user['nome'];
-       $_SESSION['tipo_usuario'] = $user['tipo'];
+        if ($resultado->num_rows === 1) {
+            $user = $resultado->fetch_assoc();
+            $_SESSION['id_usuario'] = $user['id'];
+            $_SESSION['nome'] = $user['nome'];
+            $_SESSION['tipo_usuario'] = $user['tipo'];
 
-       header("Location: home.php");
-       exit;
-   } else {
-       $erro_login = "CPF não encontrado.";
-   }
+            header("Location: home.php");
+            exit;
+        } else {
+            $erro_login = "CPF não encontrado.";
+        }
+    }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="pt-br">

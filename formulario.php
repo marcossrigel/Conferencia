@@ -1,79 +1,64 @@
 <?php
-
+include_once('config.php'); 
 session_start();
-include("config.php");
-
-$registro_inserido = false;
-$nome_fornecedor = '';
-
-if (isset($_SESSION['id_usuario'])) {
-    $id = $_SESSION['id_usuario'];
-    $sql = "SELECT nome FROM usuarios WHERE id = ? AND tipo = 'fornecedor'";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-        $nome_fornecedor = $row['nome'];
-    }
+if (!isset($_SESSION['id_usuario'])) {
+    die("Acesso negado. Faça login.");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_fornecedor = $_SESSION['id_usuario'] ?? null;
+
+    $id_usuario = $_SESSION['id_usuario'];
+
     $fornecedor = $_POST['fornecedor'] ?? '';
-
+    $nota_fiscal = $_POST['nota_fiscal'] ?? '';
     $produto = $_POST['produto'] ?? '';
-    $quantidade = $_POST['quantidade'] ?? 0;
-    $peso_etiqueta = $_POST['peso_etiqueta'] ?? 0;
+    $quant_nf = $_POST['quant_nf'] ?? 0;
+    $etiquetas = $_POST['etiquetas'] ?? [];
+    $total_etiquetas = array_sum(array_map('floatval', $etiquetas));
+    $num_volumes = $_POST['num_volumes'] ?? 0;
+    $peso_bruto = $_POST['peso_bruto'] ?? 0;
     $tara = $_POST['tara'] ?? 0;
-    $peso_balanca = $_POST['peso_balanca'] ?? 0;
-    $peso_liquido = $_POST['peso_liquido'] ?? 0;
-    $diferenca = $_POST['diferenca'] ?? 0;
-    $divergencia = $_POST['divergencia'] ?? '';
+    $tara_total = $tara * $num_volumes;
+    $peso_liquido = $peso_bruto - $tara_total;
+    $diferenca = $peso_liquido - $total_etiquetas;
+
     $observacoes = $_POST['observacoes'] ?? '';
-
-    if (!$id_fornecedor) {
-        die("Usuário não autenticado.");
-    }
-
-    $foto_nome = '';
-    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-        $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-        $foto_nome = 'foto_' . uniqid() . '.' . $ext;
-        move_uploaded_file($_FILES['foto']['tmp_name'], 'uploads/' . $foto_nome);
-    }
-
     $assinatura_base64 = $_POST['assinatura_base64'] ?? '';
-    $assinatura_nome = '';
-    if (!empty($assinatura_base64)) {
-        $partes = explode(',', $assinatura_base64);
-        if (count($partes) === 2) {
-            $imagem_binaria = base64_decode($partes[1]);
-            $assinatura_nome = 'assinatura_' . uniqid() . '.png';
-            file_put_contents('uploads/' . $assinatura_nome, $imagem_binaria);
+
+    $nome_arquivo = null;
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+        $pasta_destino = "uploads/";
+        if (!is_dir($pasta_destino)) {
+            mkdir($pasta_destino, 0777, true);
         }
+        $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+        $nome_arquivo = uniqid("foto_") . '.' . $ext;
+        move_uploaded_file($_FILES['foto']['tmp_name'], $pasta_destino . $nome_arquivo);
     }
-
-    $sql = "INSERT INTO entregas (
-        id_fornecedor, nome_usuario, fornecedor, produto, quantidade,
-        peso_etiqueta, tara, peso_balanca, peso_liquido,
-        diferenca, divergencia, observacoes, foto, assinatura
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($sql);
     
-    $stmt->bind_param("isssddddddssss",
-        $id_fornecedor, $nome_fornecedor, $fornecedor, $produto, $quantidade,
-        $peso_etiqueta, $tara, $peso_balanca, $peso_liquido,
-        $diferenca, $divergencia, $observacoes, $foto_nome, $assinatura_nome
+    $divergencia = ($diferenca < 0) ? "⚠️ Há Divergência" : "OK";
+    $etiquetas_json = json_encode(array_map('floatval', $etiquetas)); 
+
+    $query = "INSERT INTO entregas (
+        id_usuario, fornecedor, numero_nf, produto, quant_nf, etiquetas, total_etiquetas, volumes,
+        peso_bruto, tara, tara_total, peso_liquido, diferenca, divergencia, observacoes,
+        foto, assinatura_base64
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($query); 
+
+    $stmt->bind_param("isssissidddddssss",
+        $id_usuario, $fornecedor, $nota_fiscal, $produto, $quant_nf,
+        $etiquetas_json, $total_etiquetas, $num_volumes,
+        $peso_bruto, $tara, $tara_total, $peso_liquido, $diferenca,
+        $divergencia, $observacoes, $nome_arquivo, $assinatura_base64
     );
 
-
     if ($stmt->execute()) {
-        $registro_inserido = true;
+        echo "<script>alert('Entrega registrada com sucesso!'); window.location.href='formulario.php';</script>";
+        exit;
     } else {
-        echo "Erro ao inserir: " . $stmt->error;
+        echo "Erro ao salvar: " . $stmt->error;
     }
 
     $stmt->close();
@@ -85,329 +70,257 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Conferência de Entrega</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background-color: #e3e8ec;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 40px 20px;
-      min-height: 100vh;
+    * {
       box-sizing: border-box;
     }
+
+    body {
+      margin: 0;
+      padding: 40px 10px;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
     .container {
       background-color: #fff;
-      border-radius: 15px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      padding: 30px;
+      padding: 30px 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
       max-width: 500px;
-      width: 100%;
-      box-sizing: border-box;
     }
-    .main-title {
-      font-size: 22px;
-      font-weight: bold;
+
+    h2 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
+      color: #333;
     }
+
     label {
-      display: block;
-      margin-top: 15px;
+      font-weight: 500;
       margin-bottom: 5px;
-      font-size: 15px;
+      display: block;
+      color: #444;
     }
-    input[type="text"],
-    input[type="number"],
-    input[type="file"],
-    textarea {
+
+    input, select, textarea, button {
       width: 100%;
-      padding: 10px;
+      padding: 10px 12px;
+      margin-bottom: 15px;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 15px;
-      box-sizing: border-box;
-    }
-    .row {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
+      border-radius: 6px;
+      font-size: 14px;
     }
 
-    textarea[name="observacoes"] {
-      height: 120px;       /* Aumenta a altura vertical */
-      resize: vertical;    /* Permite redimensionar apenas na vertical */
+    textarea {
+      resize: vertical;
     }
 
-    .row .col {
-      flex: 1 1 100%;
-      display: flex;
-      flex-direction: column;
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #007bff;
     }
-    .modal {
-      position: fixed;
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.4);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background-color: white;
-      padding: 20px 30px;
-      border-radius: 10px;
-      text-align: center;
-      font-family: 'Poppins', sans-serif;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    .modal-content button {
-      margin-top: 15px;
-      padding: 8px 20px;
+
+    button {
       font-weight: bold;
-      background-color: #4da6ff;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn-primary {
+      background-color: #007bff;
       color: white;
       border: none;
-      border-radius: 8px;
-      cursor: pointer;
     }
 
-    @media (min-width: 600px) {
-      .row .col {
-        flex: 1;
-      }
+    .btn-primary:hover {
+      background-color: #0056b3;
     }
-    .button-group {
-      text-align: center;
-      margin-top: 25px;
-    }
-    .button-group button {
-      padding: 12px 20px;
-      font-size: 16px;
-      font-weight: bold;
-      color: #fff;
-      background-color: #4da6ff;
+
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
       border: none;
-      border-radius: 10px;
-      cursor: pointer;
     }
-    .button-group button:hover {
-      background-color: #3399ff;
+
+    .btn-danger:hover {
+      background-color: #a71d2a;
     }
-    .cancelar-link {
-      text-align: center;
-      margin-top: 15px;
-    }
-    .cancelar-link a {
-      color: red;
-      font-weight: bold;
-      text-decoration: none;
-    }
-    #divergencia {
-      display: inline-block;
-      padding: 8px 12px;
-      margin-top: 5px;
-      font-weight: bold;
-      background-color: #f0f0f0;
-      border-radius: 8px;
-    }
+
     canvas {
-      width: 100% !important;
-      height: auto;
       border: 1px solid #ccc;
-      border-radius: 10px;
-      margin-top: 10px;
+      border-radius: 6px;
+      width: 100%;
+      height: 150px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    @media (min-width: 480px) {
+      .button-group {
+        flex-direction: row;
+        justify-content: space-between;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="main-title">Conferência de Entrega</div>
 
-    <form method="POST" action="formulario.php" enctype="multipart/form-data" onsubmit="return handleSubmit()">
-      <p style="text-align: right; font-size: 12px; color: gray;">
-        Registro em: <?= date("d/m/Y H:i:s") ?>
-      </p>
+<div class="container">
+  <h2>Conferência de Entrega</h2>
+  <form action="formulario.php" method="POST" enctype="multipart/form-data">
 
-      <p><strong>Nome:</strong> <?= htmlspecialchars($nome_fornecedor) ?></p>
+    <label>Fornecedor</label>
+    <input type="text" name="fornecedor" required>
 
-      <label>Fornecedor</label>
-      <input type="text" name="fornecedor" placeholder="Nome do fornecedor">
+    <label>Número da Nota Fiscal</label>
+    <input type="text" name="nota_fiscal" required>
 
-      <label>Produto</label>
-      <input type="text" name="produto" placeholder="Nome do produto">
+    <label>Produto</label>
+    <input type="text" name="produto" required>
 
-      <label>Quantidade Pedida</label>
-      <input type="number" name="quantidade">
+    <label>Quantidade a Receber (NF)</label>
+    <input type="number" name="quant_nf" required>
 
-      <div class="row">
-
-        <div class="col">
-          <label>Peso da Etiqueta</label>
-          <input type="number" name="peso_etiqueta" id="peso_etiqueta" step="0.01">
-        </div>
-
-        <div class="col">
-          <label>tara</label>
-          <input type="number" name="tara" id="tara">
-        </div>
-      </div>
-
-      <div class="row">
-
-        <div class="col">
-          <label>Peso da Balança</label>
-          <input type="number" name="peso_balanca" id="peso_balanca" step="0.01">
-        </div>
-
-      </div>
-
-      <label>Diferença (Calculada)</label>
-        <div id="diferenca_exibida">0,00</div>
-        <input type="hidden" name="peso_liquido" id="peso_liquido_oculto">
-
-      <input type="hidden" id="diferenca_oculta">
-      <label>Divergência</label>
-        <label id="divergencia">---</label>
-        <input type="hidden" name="divergencia" id="divergencia_oculto">
-
-      <label>Observações</label>
-      <textarea name="observacoes" rows="4" placeholder="Digite aqui..."></textarea>
-
-      <label>Foto</label>
-      <input type="file" name="foto">
-
-      <label>Assinatura Digital</label>
-      <canvas id="signature-pad" width="400" height="150"></canvas>
-      <input type="hidden" id="assinatura_base64" name="assinatura_base64">
-      <div style="margin-top: 10px;">
-        <button type="button" onclick="clearSignature()">Limpar</button>
-      </div>
-
-      <div class="button-group">
-        <button type="submit">Confirmar Entrega</button>
-      </div>
-
-      <div class="cancelar-link">
-        <a href="home.php">Cancelar</a>
-      </div>
-    </form>
-
-    
-  </div>
-  
-    <div id="sucessoModal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <p>Registro inserido com sucesso.</p>
-      <button onclick="fecharModal()">OK</button>
+    <label>Peso das Etiquetas (por volume)</label>
+    <div id="etiquetas">
+      <input type="number" name="etiquetas[]" class="etiqueta" placeholder="Peso etiqueta" oninput="atualizarCalculos()">
     </div>
+    <button type="button" class="btn-primary" onclick="adicionarEtiqueta()">+ Adicionar Etiqueta</button>
+
+    <input type="number" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly>
+
+    <label>Número de Volumes</label>
+    <input type="number" id="numVolumes" name="num_volumes" oninput="atualizarCalculos()">
+
+    <label>Peso Bruto da Balança</label>
+    <input type="number" id="pesoBruto" name="peso_bruto" oninput="atualizarCalculos()">
+
+    <label>Tara por Volume</label>
+    <input type="number" id="tara" name="tara" step="0.001" min="0" oninput="atualizarCalculos()">
+
+    <label>Peso Líquido da Balança</label>
+    <input type="number" id="pesoLiquido" readonly>
+
+    <label>Diferença (Peso Líquido - Total Etiquetas)</label>
+    <input type="number" id="diferenca" readonly>
+
+    <label>Divergência</label>
+    <input type="text" id="campoDivergencia" readonly>
+
+    <label>Observações</label>
+    <textarea name="observacoes" placeholder="Digite aqui..."></textarea>
+
+    <label>Foto</label>
+    <input type="file" name="foto" accept="image/*">
+
+    <label>Assinatura Digital</label>
+    <canvas id="assinatura"></canvas>
+    <input type="hidden" name="assinatura_base64" id="assinatura_base64">
+    <button type="button" class="btn-danger" onclick="limparAssinatura()">Limpar Assinatura</button>
+
+    <div class="button-group">
+      <button type="reset" class="btn-danger">Cancelar</button>
+      <button type="submit" class="btn-primary" onclick="capturarAssinatura()">Confirmar Entrega</button>
     </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
-  <script>
-    const taraInput = document.getElementById('tara');
-    taraInput.addEventListener('input', atualizarDivergencia);
+    <div class="button-group" style="margin-top: 20px;">
+      <a href="home.php" class="btn-primary" style="text-align:center; display:block; text-decoration:none; padding:10px 12px; border-radius:6px;">< Voltar</a>
+    </div>
 
-    const pesoEtiquetaInput = document.getElementById('peso_etiqueta');
-    const pesoBalancaInput = document.getElementById('peso_balanca');
-    const pesoLiquidoInput = document.getElementById('peso_liquido_oculto');
-    const divergenciaLabel = document.getElementById('divergencia');
+    <div id="modalSucesso" style="display:<?= isset($sucesso) && $sucesso ? 'flex' : 'none' ?>; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center;">
+      <div style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 0 10px rgba(0,0,0,0.3);">
+        <h2 style="color:green;">✅ Entrega registrada com sucesso!</h2>
+        <button onclick="fecharModal()" style="margin-top:20px; padding:10px 20px; font-weight:bold; background:#007bff; color:white; border:none; border-radius:6px;">OK</button>
+      </div>
+    </div>
 
-    function atualizarDivergencia() {
-      const etiqueta = parseFloat(pesoEtiquetaInput.value.replace(',', '.')) || 0;
-      const balanca = parseFloat(pesoBalancaInput.value.replace(',', '.')) || 0;
-      const tara = parseFloat(taraInput.value.replace(',', '.')) || 0;
+  </form>
+</div>
 
-      const liquido = balanca - tara;
-      const diferenca = etiqueta - balanca - tara;
-
-      // Atualiza campo oculto de peso líquido
-      const pesoLiquidoInput = document.getElementById('peso_liquido_oculto');
-      pesoLiquidoInput.value = liquido.toFixed(2);
-
-      // Atualiza exibição de diferença
-      const divDif = document.getElementById('diferenca_exibida');
-      divDif.textContent = diferenca.toFixed(2).replace('.', ',');
-
-      // Atualiza campo oculto para envio no formulário
-      const diferencaOcultaInput = document.getElementById('diferenca_oculta');
-      diferencaOcultaInput.value = diferenca.toFixed(2);
-
-      // Atualiza status de divergência
-      const divergenciaLabel = document.getElementById('divergencia');
-      if (diferenca > 0) {
-        divergenciaLabel.textContent = "Não está ok";
-        divergenciaLabel.style.color = "red";
-      } else {
-        divergenciaLabel.textContent = "OK";
-        divergenciaLabel.style.color = "green";
-      }
-    }
-
-    pesoEtiquetaInput.addEventListener('input', atualizarDivergencia);
-    pesoBalancaInput.addEventListener('input', atualizarDivergencia);
-
-    const canvas = document.getElementById('signature-pad');
-    const signaturePad = new SignaturePad(canvas);
-
-    function clearSignature() {
-      signaturePad.clear();
-    }
-
-    function handleSubmit() {
-      if (signaturePad.isEmpty()) {
-        alert("Por favor, assine antes de confirmar.");
-        return false;
-      }
-
-      atualizarDivergencia();
-
-      const assinatura = signaturePad.toDataURL();
-      document.getElementById('assinatura_base64').value = assinatura;
-
-      return true;
-    }
-
-
-    function saveSignature() {
-      document.getElementById('divergencia_oculto').value = divergenciaLabel.textContent;
-
-      if (signaturePad.isEmpty()) {
-        alert("Por favor, assine antes de confirmar.");
-        return false;
-      }
-
-      const assinatura = signaturePad.toDataURL();
-      document.getElementById('assinatura_base64').value = assinatura;
-      return true;
-    }
-
-    function fecharModal() {
-      document.getElementById("sucessoModal").style.display = "none";
-    }
-
-    pesoEtiquetaInput.addEventListener('input', atualizarDivergencia);
-    pesoBalancaInput.addEventListener('input', atualizarDivergencia);
-    taraInput.addEventListener('input', atualizarDivergencia);
-
-  </script>
-
-<?php if ($registro_inserido): ?>
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("sucessoModal").style.display = "flex";
+
+  function fecharModal() {
+    document.getElementById("modalSucesso").style.display = "none";
+  }
+
+  function adicionarEtiqueta() {
+    const div = document.getElementById("etiquetas");
+    const input = document.createElement("input");
+    input.type = "number";
+    input.name = "etiquetas[]";
+    input.className = "etiqueta";
+    input.placeholder = "Peso etiqueta";
+    input.oninput = atualizarCalculos;
+    div.appendChild(input);
+  }
+
+  function atualizarCalculos() {
+  const etiquetas = document.querySelectorAll(".etiqueta");
+  let total = 0;
+  etiquetas.forEach(input => {
+    const val = parseFloat(input.value.replace(",", ".")) || 0;
+    total += val;
   });
+  document.getElementById("totalEtiquetas").value = total.toFixed(2);
+
+  const taraInput = document.getElementById("tara"); // ✅ Adicione isso
+  const bruto = parseFloat(document.getElementById("pesoBruto").value) || 0;
+  const tara = parseFloat(taraInput.value.replace(",", ".")) || 0;
+  const volumes = parseInt(document.getElementById("numVolumes").value) || 0;
+  const liquido = bruto - (tara * volumes);
+  document.getElementById("pesoLiquido").value = liquido.toFixed(2);
+
+  const diferenca = liquido - total;
+  document.getElementById("diferenca").value = diferenca.toFixed(2);
+
+  const campoDivergencia = document.getElementById("campoDivergencia");
+  campoDivergencia.value = diferenca < 0 ? "⚠️ Há Divergência" : "OK";
+}
+
+  const canvas = document.getElementById("assinatura");
+  const ctx = canvas.getContext("2d");
+  let desenhando = false;
+
+  canvas.addEventListener("mousedown", () => desenhando = true);
+  canvas.addEventListener("mouseup", () => {
+    desenhando = false;
+    ctx.beginPath();
+  });
+  canvas.addEventListener("mousemove", desenhar);
+
+  function desenhar(e) {
+    if (!desenhando) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#000";
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  function capturarAssinatura() {
+    document.getElementById("assinatura_base64").value = canvas.toDataURL();
+  }
+
+  function limparAssinatura() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+  }
+  
 </script>
-<?php endif; ?>
 
 </body>
 </html>

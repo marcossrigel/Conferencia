@@ -1,8 +1,8 @@
 <?php
 $host = 'localhost';
 $user = 'root';
-$pass = 'root1234';  // ajuste se sua senha for diferente
-$db = 'conferencia';
+$pass = '';
+$db = 'conferencia_entregas';
 $port = 3306;
 
 $conn = new mysqli($host, $user, $pass, $db, $port);

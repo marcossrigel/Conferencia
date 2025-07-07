@@ -10,13 +10,20 @@ if (!isset($_SESSION['id_usuario'])) {
 $id_fornecedor = $_SESSION['id_usuario'];
 $tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
 
+
 if ($tipo_usuario === 'admin') {
-    $query = "SELECT * FROM entregas ORDER BY id DESC";
+    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
+              FROM entregas 
+              JOIN usuarios ON entregas.id_usuario = usuarios.id_usuario 
+              ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-
 } else {
-    $query = "SELECT * FROM entregas WHERE id_fornecedor = ? ORDER BY id DESC";
+    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
+              FROM entregas 
+              JOIN usuarios ON entregas.id_usuario = usuarios.id
+              WHERE entregas.id_usuario = ? 
+              ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $id_fornecedor);
     $stmt->execute();
@@ -193,14 +200,35 @@ $resultado = $stmt->get_result();
     </button>
 
     <div class="panel">
-  <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p>
+  <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p> 
   <p><strong>Fornecedor:</strong> <?= htmlspecialchars($entrega['fornecedor']) ?></p>
-  <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quantidade']) ?></p>
+  <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quant_nf']) ?></p>
 
-  <p><strong>Peso Etiqueta:</strong> <?= htmlspecialchars($entrega['peso_etiqueta']) ?> | 
-     <strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_balanca']) ?></p>
-  <p><strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
-     <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
+  <?php
+$etiquetas_array = array_map('trim', explode(',', $entrega['etiquetas']));
+?>
+<p><strong>Etiquetas:</strong></p>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-left: 18px; margin-top: 10px;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th>Volume</th>
+      <th>Peso da Etiqueta (kg)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php foreach ($etiquetas_array as $index => $peso): ?>
+      <tr>
+        <td style="text-align: center;"><?= $index + 1 ?></td>
+        <td style="text-align: center;"><?= htmlspecialchars($peso) ?></td>
+      </tr>
+    <?php endforeach; ?>
+  </tbody>
+</table>
+
+    <br>
+    <p><strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_bruto']) ?>
+    <strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
+    <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
 
   <?php
     $div = floatval($entrega['divergencia']);
@@ -232,16 +260,13 @@ $resultado = $stmt->get_result();
       style="margin: 10px 18px; padding: 8px 12px; background-color: #ff4d4d; color: white; border: none; border-radius: 8px; cursor: pointer;">
       🗑 Excluir
     </button>
-     
+
     </div>
     <?php endwhile; ?>
     
-    <?php if ($tipo_usuario === 'admin'): ?>
-      <div style="text-align: center; margin-top: 20px;">
-        <a href="gerar_pdf.php" target="_blank" class="btn-acao">📄 Gerar PDF</a>
-        <a href="exportar_csv.php" class="btn-acao">📥 Exportar CSV</a>
-      </div>
-    <?php endif; ?>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="exportar_csv.php" target="_blank" class="btn-acao">📥 Exportar CSV</a>
+    </div>
 
   <div class="botao-voltar">
     <button onclick="window.location.href='home.php';">&lt; Voltar para Home</button>
