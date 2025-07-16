@@ -10,11 +10,10 @@ if (!isset($_SESSION['id_usuario'])) {
 $id_fornecedor = $_SESSION['id_usuario'];
 $tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
 
-
 if ($tipo_usuario === 'admin') {
     $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
               FROM entregas 
-              JOIN usuarios ON entregas.id_usuario = usuarios.id_usuario 
+              JOIN usuarios ON entregas.id_usuario = usuarios.id 
               ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
@@ -30,8 +29,13 @@ if ($tipo_usuario === 'admin') {
 }
 
 $resultado = $stmt->get_result();
-?>
 
+// ✅ Aqui agora está no lugar certo:
+if ($resultado->num_rows === 0) {
+    echo "<p>Nenhuma entrega encontrada.</p>";
+    exit;
+}
+?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -205,8 +209,9 @@ $resultado = $stmt->get_result();
   <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quant_nf']) ?></p>
 
   <?php
-$etiquetas_array = array_map('trim', explode(',', $entrega['etiquetas']));
+$etiquetas_array = json_decode($entrega['etiquetas'], true);
 ?>
+
 <p><strong>Etiquetas:</strong></p>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-left: 18px; margin-top: 10px;">
   <thead>
@@ -219,19 +224,21 @@ $etiquetas_array = array_map('trim', explode(',', $entrega['etiquetas']));
     <?php foreach ($etiquetas_array as $index => $peso): ?>
       <tr>
         <td style="text-align: center;"><?= $index + 1 ?></td>
-        <td style="text-align: center;"><?= htmlspecialchars($peso) ?></td>
+        <td style="text-align: center;"><?= number_format((float)$peso, 1, ',', '') ?></td>
       </tr>
     <?php endforeach; ?>
   </tbody>
 </table>
 
     <br>
-    <p><strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_bruto']) ?>
-    <strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> | 
-    <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
+    <p>
+      <strong>Peso Balança:</strong> <?= number_format($entrega['peso_bruto'], 2, ',', '') ?>  
+      <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
+      <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?>
+    </p>
 
   <?php
-    $div = floatval($entrega['divergencia']);
+    $div = floatval($entrega['diferenca']);
     $status = $div < 0 ? 'Não está ok' : 'OK';
     $cor = $div < 0 ? 'red' : 'green';
   ?>

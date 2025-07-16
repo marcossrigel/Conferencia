@@ -13,11 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nota_fiscal = $_POST['nota_fiscal'] ?? '';
     $produto = $_POST['produto'] ?? '';
     $quant_nf = $_POST['quant_nf'] ?? 0;
+    
     $etiquetas = $_POST['etiquetas'] ?? [];
-    $total_etiquetas = array_sum(array_map('floatval', $etiquetas));
-    $num_volumes = $_POST['num_volumes'] ?? 0;
-    $peso_bruto = $_POST['peso_bruto'] ?? 0;
-    $tara = $_POST['tara'] ?? 0;
+    $etiquetas_formatadas = array_map(function($v) {
+        return number_format((float)str_replace(',', '.', $v), 1, '.', '');
+    }, $etiquetas);
+
+    $etiquetas_json = json_encode($etiquetas_formatadas);
+    $total_etiquetas = array_sum($etiquetas_formatadas);
+    $num_volumes = isset($_POST['num_volumes']) ? intval($_POST['num_volumes']) : 0;
+    $peso_bruto = isset($_POST['peso_bruto']) ? floatval(str_replace(',', '.', $_POST['peso_bruto'])) : 0;
+
+    $tara = isset($_POST['tara']) ? floatval(str_replace(',', '.', $_POST['tara'])) : 0;
     $tara_total = $tara * $num_volumes;
     $peso_liquido = $peso_bruto - $tara_total;
     $diferenca = $peso_liquido - $total_etiquetas;
@@ -37,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $divergencia = ($diferenca < 0) ? "⚠️ Há Divergência" : "OK";
-    $etiquetas_json = json_encode(array_map('floatval', $etiquetas)); 
 
     $query = "INSERT INTO entregas (
         id_usuario, fornecedor, numero_nf, produto, quant_nf, etiquetas, total_etiquetas, volumes,
@@ -190,24 +196,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="text" name="produto" required>
 
     <label>Quantidade a Receber (NF)</label>
-    <input type="number" name="quant_nf" required>
+    <input type="text" name="quant_nf" required>
 
     <label>Peso das Etiquetas (por volume)</label>
     <div id="etiquetas">
-      <input type="number" name="etiquetas[]" class="etiqueta" placeholder="Peso etiqueta" oninput="atualizarCalculos()">
+       <input type="text" name="etiquetas[]" class="etiqueta" step="0.01" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" oninput="atualizarCalculos()">
     </div>
     <button type="button" class="btn-primary" onclick="adicionarEtiqueta()">+ Adicionar Etiqueta</button>
 
-    <input type="number" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly>
+    <input type="text" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly step="any">
 
     <label>Número de Volumes</label>
-    <input type="number" id="numVolumes" name="num_volumes" oninput="atualizarCalculos()">
+    <input type="text" id="numVolumes" name="num_volumes" step="any" inputmode="decimal" oninput="atualizarCalculos()">
 
     <label>Peso Bruto da Balança</label>
-    <input type="number" id="pesoBruto" name="peso_bruto" oninput="atualizarCalculos()">
+    <input type="text" name="peso_bruto" id="pesoBruto" oninput="atualizarCalculos()">
 
     <label>Tara por Volume</label>
-    <input type="number" id="tara" name="tara" step="0.001" min="0" oninput="atualizarCalculos()">
+    <input type="text" id="tara" name="tara" step="0.001" min="0" oninput="atualizarCalculos()">
 
     <label>Peso Líquido da Balança</label>
     <input type="number" id="pesoLiquido" readonly>
@@ -255,15 +261,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   function adicionarEtiqueta() {
-    const div = document.getElementById("etiquetas");
-    const input = document.createElement("input");
-    input.type = "number";
-    input.name = "etiquetas[]";
-    input.className = "etiqueta";
-    input.placeholder = "Peso etiqueta";
-    input.oninput = atualizarCalculos;
-    div.appendChild(input);
-  }
+  const div = document.createElement('div');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = 'etiquetas[]';
+  input.className = 'etiqueta';
+  input.placeholder = 'Peso etiqueta';
+  input.step = 'any'; // <-- permite decimais
+  input.oninput = atualizarCalculos;
+  div.appendChild(input);
+  document.getElementById('etiquetas').appendChild(div);
+}
 
   function atualizarCalculos() {
   const etiquetas = document.querySelectorAll(".etiqueta");
@@ -274,8 +282,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   });
   document.getElementById("totalEtiquetas").value = total.toFixed(2);
 
-  const taraInput = document.getElementById("tara"); // ✅ Adicione isso
-  const bruto = parseFloat(document.getElementById("pesoBruto").value) || 0;
+  const taraInput = document.getElementById("tara");
+  const bruto = parseFloat(document.getElementById("pesoBruto").value.replace(",", ".")) || 0;
   const tara = parseFloat(taraInput.value.replace(",", ".")) || 0;
   const volumes = parseInt(document.getElementById("numVolumes").value) || 0;
   const liquido = bruto - (tara * volumes);

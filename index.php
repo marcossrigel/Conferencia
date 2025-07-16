@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $user = $resultado->fetch_assoc();
             $_SESSION['id_usuario'] = $user['id'];
             $_SESSION['nome'] = $user['nome'];
-            $_SESSION['tipo_usuario'] = $user['tipo'];
+            $_SESSION['tipo_usuario'] = $user['tipo_usuario'];
 
             header("Location: home.php");
             exit;
