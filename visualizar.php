@@ -35,6 +35,7 @@ if ($resultado->num_rows === 0) {
     echo "<p>Nenhuma entrega encontrada.</p>";
     exit;
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -231,11 +232,27 @@ $etiquetas_array = json_decode($entrega['etiquetas'], true);
 </table>
 
     <br>
-    <p>
-      <strong>Peso Balança:</strong> <?= number_format($entrega['peso_bruto'], 2, ',', '') ?>  
-      <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
-      <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?>
-    </p>
+    <?php $pesoBruto = json_decode($entrega['peso_bruto'], true); ?>
+
+    <?php if (is_array($pesoBruto)): ?>
+      <p><strong>Pesagens Parciais:</strong></p>
+      <ul style="margin-left: 18px;">
+        <?php foreach ($pesoBruto as $i => $p): ?>
+          <li>Pesagem <?= $i + 1 ?>: <?= number_format($p, 2, ',', '') ?> kg</li>
+        <?php endforeach; ?>
+      </ul>
+      <p>
+        <strong>Peso Total (somado):</strong> <?= number_format(array_sum($pesoBruto), 2, ',', '') ?> kg | 
+        <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
+        <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?> kg
+      </p>
+    <?php else: ?>
+      <p>
+        <strong>Peso Bruto:</strong> <?= number_format($entrega['peso_bruto'], 2, ',', '') ?> kg | 
+        <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
+        <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?> kg
+      </p>
+    <?php endif; ?>
 
   <?php
     $div = floatval($entrega['diferenca']);

@@ -206,6 +206,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <input type="text" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly step="any">
 
+    <!-- Campo para adicionar pesagens parciais -->
+    <label>Peso parcial (kg):</label>
+    <input type="number" step="0.01" id="pesoParcialInput" class="form-control">
+    <button type="button" onclick="adicionarPesagem()" class="btn btn-primary mt-2">Adicionar Pesagem</button>
+
+    <!-- Lista de pesagens -->
+    <ul id="listaPesagens" class="mt-3"></ul>
+
+    <!-- Soma total das pesagens -->
+    <div class="mt-2">
+      <label>Total de peso bruto (kg):</label>
+      <input type="text" name="peso_bruto" id="pesoBrutoTotal" class="form-control" readonly required>
+    </div>
+
     <label>Número de Volumes</label>
     <input type="text" id="numVolumes" name="num_volumes" step="any" inputmode="decimal" oninput="atualizarCalculos()">
 
@@ -326,6 +340,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   function limparAssinatura() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.beginPath();
+  }
+
+  let pesagens = [];
+
+  function adicionarPesagem() {
+    const input = document.getElementById('pesoParcialInput');
+    const valor = parseFloat(input.value);
+
+    if (!isNaN(valor) && valor > 0) {
+      pesagens.push(valor);
+      atualizarLista();
+      input.value = '';
+    } else {
+      alert('Informe um valor válido de peso.');
+    }
+  }
+
+  function atualizarLista() {
+    const lista = document.getElementById('listaPesagens');
+    const totalField = document.getElementById('pesoBrutoTotal');
+    lista.innerHTML = '';
+
+    let soma = 0;
+    pesagens.forEach((p, i) => {
+      soma += p;
+      const li = document.createElement('li');
+      li.innerText = `Pesagem ${i + 1}: ${p.toFixed(2)} kg`;
+      lista.appendChild(li);
+    });
+
+    totalField.value = soma.toFixed(2);
   }
   
 </script>
