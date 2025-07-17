@@ -20,7 +20,7 @@ if ($tipo_usuario === 'admin') {
 } else {
     $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
               FROM entregas 
-              JOIN usuarios ON entregas.id_usuario = usuarios.id
+              JOIN usuarios ON entregas.id_usuario = usuarios.id 
               WHERE entregas.id_usuario = ? 
               ORDER BY entregas.id DESC";
     $stmt = $conn->prepare($query);
@@ -29,14 +29,8 @@ if ($tipo_usuario === 'admin') {
 }
 
 $resultado = $stmt->get_result();
-
-// ✅ Aqui agora está no lugar certo:
-if ($resultado->num_rows === 0) {
-    echo "<p>Nenhuma entrega encontrada.</p>";
-    exit;
-}
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -205,57 +199,45 @@ if ($resultado->num_rows === 0) {
     </button>
 
     <div class="panel">
-  <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p> 
+  <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p>
   <p><strong>Fornecedor:</strong> <?= htmlspecialchars($entrega['fornecedor']) ?></p>
   <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quant_nf']) ?></p>
 
-  <?php
-$etiquetas_array = json_decode($entrega['etiquetas'], true);
-?>
-
-<p><strong>Etiquetas:</strong></p>
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-left: 18px; margin-top: 10px;">
-  <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th>Volume</th>
-      <th>Peso da Etiqueta (kg)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <?php foreach ($etiquetas_array as $index => $peso): ?>
-      <tr>
-        <td style="text-align: center;"><?= $index + 1 ?></td>
-        <td style="text-align: center;"><?= number_format((float)$peso, 1, ',', '') ?></td>
+  <?php $etiquetas_array = json_decode($entrega['etiquetas'], true); ?>
+<?php if (!empty($etiquetas_array)): ?>
+  <p><strong>Etiquetas:</strong></p>
+  <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-left: 18px; margin-top: 10px;">
+    <thead>
+      <tr style="background-color: #f2f2f2;">
+        <th>Volume</th>
+        <th>Peso da Etiqueta (kg)</th>
       </tr>
-    <?php endforeach; ?>
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      <?php foreach ($etiquetas_array as $index => $peso): ?>
+        <tr>
+          <td style="text-align: center;"><?= $index + 1 ?></td>
+          <td style="text-align: center;"><?= number_format((float)$peso, 1, ',', '') ?></td>
+        </tr>
+      <?php endforeach; ?>
+      <tr>
+        <td style="text-align: right; font-weight: bold;" colspan="1">Total</td>
+        <td style="text-align: center; font-weight: bold;">
+          <?= number_format(array_sum($etiquetas_array), 2, ',', '') ?>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+<?php else: ?>
+  <p><strong>Etiquetas:</strong> Nenhuma etiqueta registrada.</p>
+<?php endif; ?>
 
-    <br>
-    <?php $pesoBruto = json_decode($entrega['peso_bruto'], true); ?>
-
-    <?php if (is_array($pesoBruto)): ?>
-      <p><strong>Pesagens Parciais:</strong></p>
-      <ul style="margin-left: 18px;">
-        <?php foreach ($pesoBruto as $i => $p): ?>
-          <li>Pesagem <?= $i + 1 ?>: <?= number_format($p, 2, ',', '') ?> kg</li>
-        <?php endforeach; ?>
-      </ul>
-      <p>
-        <strong>Peso Total (somado):</strong> <?= number_format(array_sum($pesoBruto), 2, ',', '') ?> kg | 
-        <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
-        <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?> kg
-      </p>
-    <?php else: ?>
-      <p>
-        <strong>Peso Bruto:</strong> <?= number_format($entrega['peso_bruto'], 2, ',', '') ?> kg | 
-        <strong>Tara:</strong> <?= number_format($entrega['tara'], 3, ',', '') ?> | 
-        <strong>Peso Líquido:</strong> <?= number_format($entrega['peso_liquido'], 2, ',', '') ?> kg
-      </p>
-    <?php endif; ?>
+     <p><strong>Peso Balança:</strong> <?= htmlspecialchars($entrega['peso_bruto']) ?></p>
+  <p><strong>Tara:</strong> <?= htmlspecialchars($entrega['tara']) ?> |
+    <strong>Peso Líquido:</strong> <?= htmlspecialchars($entrega['peso_liquido']) ?></p>
 
   <?php
-    $div = floatval($entrega['diferenca']);
+    $div = floatval($entrega['divergencia']);
     $status = $div < 0 ? 'Não está ok' : 'OK';
     $cor = $div < 0 ? 'red' : 'green';
   ?>
@@ -271,9 +253,9 @@ $etiquetas_array = json_decode($entrega['etiquetas'], true);
     <p><strong>Foto:</strong><br><img src="uploads/<?= $entrega['foto'] ?>" width="200" style="margin-top:10px;"></p>
   <?php endif; ?>
 
-  <?php if (!empty($entrega['assinatura'])): ?>
+  <?php if (!empty($entrega['assinatura_base64'])): ?>
     <p><strong>Assinatura:</strong><br>
-      <img src="uploads/<?= htmlspecialchars($entrega['assinatura']) ?>" width="200">
+      <img src="<?= htmlspecialchars($entrega['assinatura_base64']) ?>" width="200">
     </p>
   <?php endif; ?>
 
@@ -284,13 +266,16 @@ $etiquetas_array = json_decode($entrega['etiquetas'], true);
       style="margin: 10px 18px; padding: 8px 12px; background-color: #ff4d4d; color: white; border: none; border-radius: 8px; cursor: pointer;">
       🗑 Excluir
     </button>
-
+     
     </div>
     <?php endwhile; ?>
     
-    <div style="text-align: center; margin-top: 20px;">
-      <a href="exportar_csv.php" target="_blank" class="btn-acao">📥 Exportar CSV</a>
-    </div>
+    <?php if ($tipo_usuario === 'admin'): ?>
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="gerar_pdf.php" target="_blank" class="btn-acao">📄 Gerar PDF</a>
+        <a href="exportar_csv.php" class="btn-acao">📥 Exportar CSV</a>
+      </div>
+    <?php endif; ?>
 
   <div class="botao-voltar">
     <button onclick="window.location.href='home.php';">&lt; Voltar para Home</button>

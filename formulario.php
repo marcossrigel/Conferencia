@@ -14,7 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $produto = $_POST['produto'] ?? '';
     $quant_nf = $_POST['quant_nf'] ?? 0;
     
-    $etiquetas = $_POST['etiquetas'] ?? [];
+    $etiquetas = [];
+
+    if (!empty($_POST['etiquetas_ocultas'])) {
+        $etiquetas = json_decode($_POST['etiquetas_ocultas'], true);
+    }
     $etiquetas_formatadas = array_map(function($v) {
         return number_format((float)str_replace(',', '.', $v), 1, '.', '');
     }, $etiquetas);
@@ -206,19 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <input type="text" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly step="any">
 
-    <!-- Campo para adicionar pesagens parciais -->
-    <label>Peso parcial (kg):</label>
-    <input type="number" step="0.01" id="pesoParcialInput" class="form-control">
-    <button type="button" onclick="adicionarPesagem()" class="btn btn-primary mt-2">Adicionar Pesagem</button>
+    <input type="hidden" name="etiquetas_ocultas" id="etiquetas_ocultas">
 
-    <!-- Lista de pesagens -->
-    <ul id="listaPesagens" class="mt-3"></ul>
+    <button type="button" class="btn-primary" onclick="salvarParcialEtiqueta()">Salvar Resultado Parcial</button>
+    <p><strong>Total acumulado:</strong> <span id="totalAcumulado">0.00</span> kg</p>
 
-    <!-- Soma total das pesagens -->
-    <div class="mt-2">
-      <label>Total de peso bruto (kg):</label>
-      <input type="text" name="peso_bruto" id="pesoBrutoTotal" class="form-control" readonly required>
-    </div>
 
     <label>Número de Volumes</label>
     <input type="text" id="numVolumes" name="num_volumes" step="any" inputmode="decimal" oninput="atualizarCalculos()">
@@ -310,6 +306,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   campoDivergencia.value = diferenca < 0 ? "⚠️ Há Divergência" : "OK";
 }
 
+  let etiquetasAcumuladas = [];
+
+function salvarParcialEtiqueta() {
+  const inputs = document.querySelectorAll(".etiqueta");
+  let somaAtual = 0;
+  const valoresAtual = [];
+
+  inputs.forEach(input => {
+    const val = parseFloat(input.value.replace(",", ".")) || 0;
+    valoresAtual.push(val);
+    somaAtual += val;
+  });
+
+  if (somaAtual === 0) {
+    alert("Adicione valores válidos antes de salvar.");
+    return;
+  }
+
+  etiquetasAcumuladas = etiquetasAcumuladas.concat(valoresAtual);
+
+  // Atualiza o acumulado total
+  const total = etiquetasAcumuladas.reduce((a, b) => a + b, 0);
+  document.getElementById("totalAcumulado").innerText = total.toFixed(2);
+
+  // Atualiza o campo oculto
+  document.getElementById("etiquetas_ocultas").value = JSON.stringify(etiquetasAcumuladas);
+
+  // Limpa os campos visuais
+  document.getElementById("etiquetas").innerHTML = `
+    <input type="text" name="etiquetas[]" class="etiqueta" step="0.01" inputmode="decimal" 
+           pattern="[0-9]+([.,][0-9]+)?" oninput="atualizarCalculos()">
+  `;
+  document.getElementById("totalEtiquetas").value = "";
+}
+
   const canvas = document.getElementById("assinatura");
   const ctx = canvas.getContext("2d");
   let desenhando = false;
@@ -340,37 +371,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   function limparAssinatura() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.beginPath();
-  }
-
-  let pesagens = [];
-
-  function adicionarPesagem() {
-    const input = document.getElementById('pesoParcialInput');
-    const valor = parseFloat(input.value);
-
-    if (!isNaN(valor) && valor > 0) {
-      pesagens.push(valor);
-      atualizarLista();
-      input.value = '';
-    } else {
-      alert('Informe um valor válido de peso.');
-    }
-  }
-
-  function atualizarLista() {
-    const lista = document.getElementById('listaPesagens');
-    const totalField = document.getElementById('pesoBrutoTotal');
-    lista.innerHTML = '';
-
-    let soma = 0;
-    pesagens.forEach((p, i) => {
-      soma += p;
-      const li = document.createElement('li');
-      li.innerText = `Pesagem ${i + 1}: ${p.toFixed(2)} kg`;
-      lista.appendChild(li);
-    });
-
-    totalField.value = soma.toFixed(2);
   }
   
 </script>
