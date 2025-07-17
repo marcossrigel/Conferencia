@@ -198,7 +198,7 @@ $resultado = $stmt->get_result();
       <span class="seta">⌄</span>
     </button>
 
-    <div class="panel">
+  <div class="panel">
   <p><strong>Responsável:</strong> <?= htmlspecialchars($entrega['nome_usuario']) ?></p>
   <p><strong>Fornecedor:</strong> <?= htmlspecialchars($entrega['fornecedor']) ?></p>
   <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quant_nf']) ?></p>
@@ -270,9 +270,8 @@ $resultado = $stmt->get_result();
     </div>
     <?php endwhile; ?>
     
-    <?php if ($tipo_usuario === 'admin'): ?>
+    <?php if ($tipo_usuario === 'comum'): ?>
       <div style="text-align: center; margin-top: 20px;">
-        <a href="gerar_pdf.php" target="_blank" class="btn-acao">📄 Gerar PDF</a>
         <a href="exportar_csv.php" class="btn-acao">📥 Exportar CSV</a>
       </div>
     <?php endif; ?>

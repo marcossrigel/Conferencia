@@ -8,12 +8,18 @@ if (!isset($_GET['id']) || !isset($_SESSION['id_usuario'])) {
 }
 
 $id = intval($_GET['id']);
-$id_fornecedor = $_SESSION['id_usuario'];
+$id_usuario = $_SESSION['id_usuario'];
 
 $stmt = $conn->prepare("DELETE FROM entregas WHERE id = ? AND id_usuario = ?");
-$stmt->bind_param("ii", $id, $id_fornecedor);
+$stmt->bind_param("ii", $id, $id_usuario);
 $stmt->execute();
 
-header("Location: visualizar.php");
-exit;
-?>
+if ($stmt->affected_rows > 0) {
+    // Exclusão bem-sucedida
+    header("Location: visualizar.php?msg=sucesso");
+    exit;
+} else {
+    // Nenhuma linha foi afetada (id inválido ou tentativa de excluir entrega de outro usuário)
+    header("Location: visualizar.php?msg=erro");
+    exit;
+}
