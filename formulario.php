@@ -1,379 +1,268 @@
-<?php
-include_once('config.php'); 
-session_start();
-if (!isset($_SESSION['id_usuario'])) {
-    die("Acesso negado. Faça login.");
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $id_usuario = $_SESSION['id_usuario'];
-
-    $fornecedor = $_POST['fornecedor'] ?? '';
-    $nota_fiscal = $_POST['nota_fiscal'] ?? '';
-    $produto = $_POST['produto'] ?? '';
-    $quant_nf = $_POST['quant_nf'] ?? 0;
-    
-    $etiquetas = [];
-
-    if (!empty($_POST['etiquetas_ocultas'])) {
-        $etiquetas = json_decode($_POST['etiquetas_ocultas'], true);
-    }
-    $etiquetas_formatadas = array_map(function($v) {
-        return number_format((float)str_replace(',', '.', $v), 1, '.', '');
-    }, $etiquetas);
-
-    $etiquetas_json = json_encode($etiquetas_formatadas);
-    $total_etiquetas = array_sum($etiquetas_formatadas);
-    $num_volumes = isset($_POST['num_volumes']) ? intval($_POST['num_volumes']) : 0;
-    $peso_bruto = isset($_POST['peso_bruto']) ? floatval(str_replace(',', '.', $_POST['peso_bruto'])) : 0;
-
-    $tara = isset($_POST['tara']) ? floatval(str_replace(',', '.', $_POST['tara'])) : 0;
-    $tara_total = $tara * $num_volumes;
-    $peso_liquido = $peso_bruto - $tara_total;
-    $diferenca = $peso_liquido - $total_etiquetas;
-
-    $observacoes = $_POST['observacoes'] ?? '';
-    $assinatura_base64 = $_POST['assinatura_base64'] ?? '';
-
-    $nome_arquivo = null;
-    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-        $pasta_destino = "uploads/";
-        if (!is_dir($pasta_destino)) {
-            mkdir($pasta_destino, 0777, true);
-        }
-        $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-        $nome_arquivo = uniqid("foto_") . '.' . $ext;
-        move_uploaded_file($_FILES['foto']['tmp_name'], $pasta_destino . $nome_arquivo);
-    }
-    
-    $divergencia = ($diferenca < 0) ? "⚠️ Há Divergência" : "OK";
-
-    $query = "INSERT INTO entregas (
-        id_usuario, fornecedor, numero_nf, produto, quant_nf, etiquetas, total_etiquetas, volumes,
-        peso_bruto, tara, tara_total, peso_liquido, diferenca, divergencia, observacoes,
-        foto, assinatura_base64
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    $stmt = $conn->prepare($query); 
-
-    $stmt->bind_param("isssissidddddssss",
-        $id_usuario, $fornecedor, $nota_fiscal, $produto, $quant_nf,
-        $etiquetas_json, $total_etiquetas, $num_volumes,
-        $peso_bruto, $tara, $tara_total, $peso_liquido, $diferenca,
-        $divergencia, $observacoes, $nome_arquivo, $assinatura_base64
-    );
-
-    if ($stmt->execute()) {
-        echo "<script>alert('Entrega registrada com sucesso!'); window.location.href='formulario.php';</script>";
-        exit;
-    } else {
-        echo "Erro ao salvar: " . $stmt->error;
-    }
-
-    $stmt->close();
-    $conn->close();
-}
-?>
-
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Conferência de Entrega</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conferência de Entrega</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
-      margin: 0;
-      padding: 40px 10px;
-      font-family: 'Segoe UI', sans-serif;
       background-color: #f0f2f5;
+      font-family: 'Poppins', sans-serif;
       display: flex;
       justify-content: center;
-      min-height: 100vh;
+      padding: 20px;
     }
-
     .container {
-      background-color: #fff;
-      padding: 30px 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      background-color: white;
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      max-width: 480px;
       width: 100%;
-      max-width: 500px;
+      box-sizing: border-box;
     }
-
     h2 {
       text-align: center;
-      margin-bottom: 25px;
-      color: #333;
-    }
-
-    label {
+      margin-bottom: 20px;
       font-weight: 500;
-      margin-bottom: 5px;
+    }
+    label {
       display: block;
-      color: #444;
+      margin-top: 15px;
+      color: #242424ff;
+      font-weight: 400;
+      font-size: 15px;
     }
-
-    input, select, textarea, button {
+    input, textarea, button {
       width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 15px;
+      padding: 12px;
+      margin-top: 5px;
       border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
+      border-radius: 5px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px;
+      box-sizing: border-box;
     }
-
-    textarea {
-      resize: vertical;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: #007bff;
-    }
-
     button {
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    .btn-primary {
       background-color: #007bff;
       color: white;
       border: none;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background-color 0.3s ease;
     }
-
-    .btn-primary:hover {
+    button:hover {
       background-color: #0056b3;
     }
-
-    .btn-danger {
+    .btn-red {
       background-color: #dc3545;
-      color: white;
-      border: none;
+    }
+    .btn-red:hover {
+      background-color: #c82333;
     }
 
-    .btn-danger:hover {
-      background-color: #a71d2a;
-    }
-
-    canvas {
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      width: 100%;
-      height: 150px;
-    }
-
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    @media (min-width: 480px) {
-      .button-group {
-        flex-direction: row;
-        justify-content: space-between;
+    @media (max-width: 500px) {
+      .container {
+        padding: 20px 15px;
+      }
+      input, textarea, button {
+        font-size: 14px;
+        padding: 10px;
       }
     }
   </style>
 </head>
 <body>
+  <form class="container" method="post" action="salvar_entrega.php" enctype="multipart/form-data">
+    <h2>Conferência de Entrega</h2>
 
-<div class="container">
-  <h2>Conferência de Entrega</h2>
-  <form action="formulario.php" method="POST" enctype="multipart/form-data">
+    <!-- Campos ocultos -->
+    <input type="hidden" name="etiquetas" id="inputEtiquetas">
+    <input type="hidden" name="pesos_liquidos" id="inputPesosLiquidos">
+    <input type="hidden" name="total_etiquetas" id="hiddenTotalEtiquetas">
+    <input type="hidden" name="total_balanca" id="hiddenTotalBalanca">
+    <input type="hidden" name="campoDiferenca" id="hiddenDiferenca">
+    <input type="hidden" name="campoDivergencia" id="hiddenDivergencia">
+    <input type="hidden" name="assinatura_base64" id="assinaturaBase64">
 
+    <!-- Campos visíveis -->
     <label>Fornecedor</label>
-    <input type="text" name="fornecedor" required>
+    <input type="text" name="fornecedor">
 
     <label>Número da Nota Fiscal</label>
-    <input type="text" name="nota_fiscal" required>
+    <input type="text" name="nota_fiscal">
 
     <label>Produto</label>
-    <input type="text" name="produto" required>
+    <input type="text" name="produto">
 
     <label>Quantidade a Receber (NF)</label>
-    <input type="text" name="quant_nf" required>
+    <input type="text" name="quant_nf">
 
-    <label>Peso das Etiquetas (por volume)</label>
-    <div id="etiquetas">
-       <input type="text" name="etiquetas[]" class="etiqueta" step="0.01" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" oninput="atualizarCalculos()">
+    <div id="etiquetasContainer">
+      <label>Peso das Etiquetas</label>
+      <input type="text" class="etiqueta" placeholder="Ex: 12,5">
     </div>
-    <button type="button" class="btn-primary" onclick="adicionarEtiqueta()">+ Adicionar Etiqueta</button>
-
-    <input type="text" id="totalEtiquetas" placeholder="Total Etiquetas (soma)" readonly step="any">
-
-    <input type="hidden" name="etiquetas_ocultas" id="etiquetas_ocultas">
-
-    <button type="button" class="btn-primary" onclick="salvarParcialEtiqueta()">Salvar Resultado Parcial</button>
-    <p><strong>Total acumulado:</strong> <span id="totalAcumulado">0.00</span> kg</p>
-
-
-    <label>Número de Volumes</label>
-    <input type="text" id="numVolumes" name="num_volumes" step="any" inputmode="decimal" oninput="atualizarCalculos()">
-
-    <label>Peso Bruto da Balança</label>
-    <input type="text" name="peso_bruto" id="pesoBruto" oninput="atualizarCalculos()">
-
-    <label>Tara por Volume</label>
-    <input type="text" id="tara" name="tara" step="0.001" min="0" oninput="atualizarCalculos()">
 
     <label>Peso Líquido da Balança</label>
-    <input type="number" id="pesoLiquido" readonly>
+    <input type="text" id="pesoBalanca">
+
+    <button type="button" onclick="adicionarCampoEtiqueta()">+ Adicionar</button>
+    <button type="button" onclick="salvarResultadoParcial()">Salvar Resultado Parcial</button>
+
+    <label>Total acumulado etiquetas</label>
+    <input type="text" id="totalEtiquetas" readonly value="0,00 kg">
+
+    <label>Total acumulado Peso Líquido</label>
+    <input type="text" id="totalBalanca" readonly value="0,00 kg">
+
+    <label>Número de Volumes</label>
+    <input type="text" name="num_volumes">
+
+    <label>Tara por Volume</label>
+    <input type="text" name="tara_volume">
 
     <label>Diferença (Peso Líquido - Total Etiquetas)</label>
-    <input type="number" id="diferenca" readonly>
+    <input type="text" id="campoDiferenca" readonly>
 
     <label>Divergência</label>
     <input type="text" id="campoDivergencia" readonly>
 
     <label>Observações</label>
-    <textarea name="observacoes" placeholder="Digite aqui..."></textarea>
+    <textarea name="observacoes" rows="3" placeholder="Digite aqui..." style="resize: vertical;"></textarea>
 
     <label>Foto</label>
-    <input type="file" name="foto" accept="image/*">
+    <input type="file" name="foto">
 
     <label>Assinatura Digital</label>
-    <canvas id="assinatura"></canvas>
-    <input type="hidden" name="assinatura_base64" id="assinatura_base64">
-    <button type="button" class="btn-danger" onclick="limparAssinatura()">Limpar Assinatura</button>
+    <canvas id="signatureCanvas" width="400" height="150" style="border:1px solid #ccc; border-radius:5px; width:100%; touch-action: none;"></canvas>
+    <button type="button" class="btn-red" onclick="limparAssinatura()">Limpar Assinatura</button>
 
-    <div class="button-group">
-      <button type="reset" class="btn-danger">Cancelar</button>
-      <button type="submit" class="btn-primary" onclick="capturarAssinatura()">Confirmar Entrega</button>
-    </div>
-
-    <div class="button-group" style="margin-top: 20px;">
-      <a href="home.php" class="btn-primary" style="text-align:center; display:block; text-decoration:none; padding:10px 12px; border-radius:6px;">< Voltar</a>
-    </div>
-
-    <div id="modalSucesso" style="display:<?= isset($sucesso) && $sucesso ? 'flex' : 'none' ?>; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center;">
-      <div style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 0 10px rgba(0,0,0,0.3);">
-        <h2 style="color:green;">✅ Entrega registrada com sucesso!</h2>
-        <button onclick="fecharModal()" style="margin-top:20px; padding:10px 20px; font-weight:bold; background:#007bff; color:white; border:none; border-radius:6px;">OK</button>
-      </div>
-    </div>
-
+    <button type="submit">Confirmar Entrega</button>
+    <button type="button" style="margin-top: 10px;" onclick="window.location.href='home.php'">&lt; Voltar</button>
   </form>
-</div>
 
-<script>
+  <script>
+    let etiquetas = [];
+    let balancas = [];
 
-  function fecharModal() {
-    document.getElementById("modalSucesso").style.display = "none";
-  }
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    let desenhando = false;
 
-  function adicionarEtiqueta() {
-  const div = document.createElement('div');
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.name = 'etiquetas[]';
-  input.className = 'etiqueta';
-  input.placeholder = 'Peso etiqueta';
-  input.step = 'any'; // <-- permite decimais
-  input.oninput = atualizarCalculos;
-  div.appendChild(input);
-  document.getElementById('etiquetas').appendChild(div);
-}
+    function getPos(event) {
+      const rect = canvas.getBoundingClientRect();
+      return event.touches ? {
+        x: event.touches[0].clientX - rect.left,
+        y: event.touches[0].clientY - rect.top
+      } : {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
 
-  function atualizarCalculos() {
-  const etiquetas = document.querySelectorAll(".etiqueta");
-  let total = 0;
-  etiquetas.forEach(input => {
-    const val = parseFloat(input.value.replace(",", ".")) || 0;
-    total += val;
-  });
-  document.getElementById("totalEtiquetas").value = total.toFixed(2);
+    function iniciarDesenho(event) {
+      desenhando = true;
+      const pos = getPos(event);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
 
-  const taraInput = document.getElementById("tara");
-  const bruto = parseFloat(document.getElementById("pesoBruto").value.replace(",", ".")) || 0;
-  const tara = parseFloat(taraInput.value.replace(",", ".")) || 0;
-  const volumes = parseInt(document.getElementById("numVolumes").value) || 0;
-  const liquido = bruto - (tara * volumes);
-  document.getElementById("pesoLiquido").value = liquido.toFixed(2);
+    function desenhar(event) {
+      if (!desenhando) return;
+      const pos = getPos(event);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
 
-  const diferenca = liquido - total;
-  document.getElementById("diferenca").value = diferenca.toFixed(2);
+    function pararDesenho() {
+      desenhando = false;
+      ctx.closePath();
+    }
 
-  const campoDivergencia = document.getElementById("campoDivergencia");
-  campoDivergencia.value = diferenca < 0 ? "⚠️ Há Divergência" : "OK";
-}
+    function limparAssinatura() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
-  let etiquetasAcumuladas = [];
+    // Eventos canvas
+    canvas.addEventListener('mousedown', iniciarDesenho);
+    canvas.addEventListener('mousemove', desenhar);
+    canvas.addEventListener('mouseup', pararDesenho);
+    canvas.addEventListener('mouseout', pararDesenho);
+    canvas.addEventListener('touchstart', iniciarDesenho);
+    canvas.addEventListener('touchmove', function(e) {
+      desenhar(e);
+      e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', pararDesenho);
 
-function salvarParcialEtiqueta() {
-  const inputs = document.querySelectorAll(".etiqueta");
-  let somaAtual = 0;
-  const valoresAtual = [];
+    function parseNumero(valor) {
+      return parseFloat(valor.replace(",", "."));
+    }
 
-  inputs.forEach(input => {
-    const val = parseFloat(input.value.replace(",", ".")) || 0;
-    valoresAtual.push(val);
-    somaAtual += val;
-  });
+    function formatarNumero(num) {
+      return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
-  if (somaAtual === 0) {
-    alert("Adicione valores válidos antes de salvar.");
-    return;
-  }
+    function adicionarCampoEtiqueta() {
+      const container = document.getElementById('etiquetasContainer');
+      const novoInput = document.createElement('input');
+      novoInput.type = 'text';
+      novoInput.className = 'etiqueta';
+      novoInput.placeholder = 'Ex: 12,5';
+      novoInput.style.marginTop = '5px';
+      container.appendChild(novoInput);
+    }
 
-  etiquetasAcumuladas = etiquetasAcumuladas.concat(valoresAtual);
+    function salvarResultadoParcial() {
+      // Coletar etiquetas
+      const inputsEtiquetas = document.querySelectorAll('.etiqueta');
+      inputsEtiquetas.forEach(input => {
+        const valor = parseNumero(input.value);
+        if (!isNaN(valor)) etiquetas.push(valor);
+      });
 
-  // Atualiza o acumulado total
-  const total = etiquetasAcumuladas.reduce((a, b) => a + b, 0);
-  document.getElementById("totalAcumulado").innerText = total.toFixed(2);
+      // Coletar peso da balança
+      const valorBalanca = parseNumero(document.getElementById('pesoBalanca').value);
+      if (!isNaN(valorBalanca)) balancas.push(valorBalanca);
 
-  // Atualiza o campo oculto
-  document.getElementById("etiquetas_ocultas").value = JSON.stringify(etiquetasAcumuladas);
+      // Cálculo total
+      const totalEtiquetas = etiquetas.reduce((a, b) => a + b, 0);
+      const totalBalanca = balancas.reduce((a, b) => a + b, 0);
+      const diferenca = totalBalanca - totalEtiquetas;
 
-  // Limpa os campos visuais
-  document.getElementById("etiquetas").innerHTML = `
-    <input type="text" name="etiquetas[]" class="etiqueta" step="0.01" inputmode="decimal" 
-           pattern="[0-9]+([.,][0-9]+)?" oninput="atualizarCalculos()">
-  `;
-  document.getElementById("totalEtiquetas").value = "";
-}
+      // Exibição nos campos de visualização
+      document.getElementById('totalEtiquetas').value = formatarNumero(totalEtiquetas) + " kg";
+      document.getElementById('totalBalanca').value = formatarNumero(totalBalanca) + " kg";
+      document.getElementById('campoDiferenca').value = formatarNumero(diferenca) + " kg";
+      document.getElementById('campoDivergencia').value = diferenca < 0 ? "⚠️ Há divergência" : "OK";
+      document.getElementById('campoDivergencia').style.color = diferenca < 0 ? "red" : "green";
 
-  const canvas = document.getElementById("assinatura");
-  const ctx = canvas.getContext("2d");
-  let desenhando = false;
+      // Atualizar campos ocultos para envio
+      document.getElementById('inputEtiquetas').value = JSON.stringify(etiquetas);
+      document.getElementById('inputPesosLiquidos').value = JSON.stringify(balancas);
+      document.getElementById('hiddenTotalEtiquetas').value = totalEtiquetas;
+      document.getElementById('hiddenTotalBalanca').value = totalBalanca;
+      document.getElementById('hiddenDiferenca').value = diferenca.toFixed(2);
+      document.getElementById('hiddenDivergencia').value = diferenca < 0 ? "Divergente" : "OK";
+      document.getElementById('assinaturaBase64').value = canvas.toDataURL();
 
-  canvas.addEventListener("mousedown", () => desenhando = true);
-  canvas.addEventListener("mouseup", () => {
-    desenhando = false;
-    ctx.beginPath();
-  });
-  canvas.addEventListener("mousemove", desenhar);
+      // Reset visual dos campos
+      document.getElementById('etiquetasContainer').innerHTML = `
+        <label>Peso das Etiquetas</label>
+        <input type="text" class="etiqueta" placeholder="Ex: 12,5">
+      `;
+      document.getElementById('pesoBalanca').value = '';
+    console.log("Vetor de etiquetas:", etiquetas);
+    console.log("Vetor de pesos líquidos:", balancas);
+    console.log("JSON etiquetas:", JSON.stringify(etiquetas));
+    console.log("JSON pesos líquidos:", JSON.stringify(balancas));
+    }
 
-  function desenhar(e) {
-    if (!desenhando) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#000";
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  }
-
-  function capturarAssinatura() {
-    document.getElementById("assinatura_base64").value = canvas.toDataURL();
-  }
-
-  function limparAssinatura() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.beginPath();
-  }
-  
-</script>
-
+  </script>
 </body>
 </html>
