@@ -68,8 +68,10 @@ img.assinatura {
     background-color: #dc3545;
     color: white;
     font-weight: bold;
-    float: right;
     margin-top: 10px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: none;
 }
 
 .accordion-content {
@@ -77,7 +79,9 @@ img.assinatura {
     background: #fff;
     padding: 10px 15px;
     border-radius: 0 0 10px 10px;
+    margin-bottom: 20px; /* <<< Aqui está o espaçamento desejado */
 }
+
 .active + .accordion-content {
     display: block;
 }
@@ -107,6 +111,15 @@ table {
     gap: 20px;
     margin-top: 10px;
     flex-wrap: wrap;
+}
+
+.accordion-content {
+    display: none;
+    transition: max-height 0.3s ease-out;
+}
+
+.accordion-content.active {
+    display: block;
 }
 .table-wrapper {
     flex: 1;
@@ -141,46 +154,47 @@ th, td {
         <p><strong>Quantidade:</strong> <?= htmlspecialchars($entrega['quant_nf']) ?></p>
 
         <div class="tables-container">
-        <div class="table-wrapper">
-            <p><strong>Etiquetas:</strong></p>
-            <table>
-                <tr><th>Volume</th><th>Peso da Etiqueta (kg)</th></tr>
-                <?php 
-                $etiquetas = json_decode($entrega['etiquetas'], true) ?? [];
-                $total_etiquetas = 0;
-                foreach ($etiquetas as $index => $peso):
-                    $total_etiquetas += $peso;
-                ?>
-                    <tr><td><?= $index + 1 ?></td><td><?= number_format($peso, 1, ',', '.') ?></td></tr>
-                <?php endforeach; ?>
-                <tr><td><strong>Total</strong></td><td><strong><?= number_format($total_etiquetas, 2, ',', '.') ?></strong></td></tr>
-            </table>
-        </div>
+            <div class="table-wrapper">
+                <p><strong>Etiquetas:</strong></p>
+                <table>
+                    <tr><th>Volume</th><th>Peso da Etiqueta (kg)</th></tr>
+                    <?php 
+                    $etiquetas = json_decode($entrega['etiquetas'], true) ?? [];
+                    $total_etiquetas = 0;
+                    foreach ($etiquetas as $index => $peso):
+                        $total_etiquetas += $peso;
+                    ?>
+                        <tr><td><?= $index + 1 ?></td><td><?= number_format($peso, 1, ',', '.') ?></td></tr>
+                    <?php endforeach; ?>
+                    <tr><td><strong>Total</strong></td><td><strong><?= number_format($total_etiquetas, 2, ',', '.') ?></strong></td></tr>
+                </table>
+            </div>
 
-        <div class="table-wrapper">
-            <p><strong>Pesos da Balança:</strong></p>
-            <table>
-                <tr><th>Volume</th><th>Peso Bruto (kg)</th></tr>
-                <?php 
-                $pesos = json_decode($entrega['pesos_liquidos'], true) ?? [];
-                $total_pesos = 0;
-                foreach ($pesos as $index => $peso):
-                    $total_pesos += $peso;
-                ?>
-                    <tr><td><?= $index + 1 ?></td><td><?= number_format($peso, 1, ',', '.') ?></td></tr>
-                <?php endforeach; ?>
-                <tr><td><strong>Total</strong></td><td><strong><?= number_format($total_pesos, 2, ',', '.') ?></strong></td></tr>
-            </table>
+            <div class="table-wrapper">
+                <p><strong>Pesos da Balança:</strong></p>
+                <table>
+                    <tr><th>Volume</th><th>Peso Bruto (kg)</th></tr>
+                    <?php 
+                    $pesos = json_decode($entrega['pesos_liquidos'], true) ?? [];
+                    $total_pesos = 0;
+                    foreach ($pesos as $index => $peso):
+                        $total_pesos += $peso;
+                    ?>
+                        <tr><td><?= $index + 1 ?></td><td><?= number_format($peso, 1, ',', '.') ?></td></tr>
+                    <?php endforeach; ?>
+                    <tr><td><strong>Total</strong></td><td><strong><?= number_format($total_pesos, 2, ',', '.') ?></strong></td></tr>
+                </table>
+            </div>
         </div>
-    </div>
-           <strong>Tara:</strong> <?= number_format($entrega['tara_volume'], 3, ',', '.') ?> |
-           <strong>Peso Líquido:</strong> <?= number_format($entrega['total_balanca'] - ($entrega['num_volumes'] * $entrega['tara_volume']), 2, ',', '.') ?>
-        </p>
+           <p>
+               <strong>Diferença:</strong> <?= number_format($entrega['diferenca'], 2, ',', '.') ?> |
+                <strong>Tara:</strong> <?= number_format($entrega['tara_volume'], 1, ',', '.') ?> |
+                <strong>Peso Líquido:</strong> <?= number_format($entrega['total_balanca'] - ($entrega['num_volumes'] * $entrega['tara_volume']), 2, ',', '.') ?> 
+            </p>
 
         <p><strong>Divergência:</strong> 
-           <?= number_format($entrega['diferenca'], 2, ',', '.') ?> 
            <span class="<?= ($entrega['diferenca'] < 0) ? 'divergencia-alerta' : 'divergencia-ok' ?>">
-               <?= ($entrega['diferenca'] < 0) ? '⚠️' : '(OK)' ?>
+               <?= ($entrega['diferenca'] < 0) ? '⚠️ Ha divergencia' : '(OK)' ?>
            </span>
         </p>
 
@@ -198,11 +212,13 @@ th, td {
             </p>
         <?php endif; ?>
 
-        <!-- Botão de exclusão -->
+        <div style="text-align: right; margin-top: 15px;">
         <form action="excluir_entrega.php" method="post" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
             <input type="hidden" name="id" value="<?= $entrega['id'] ?>">
             <button type="submit" class="excluir-btn">Excluir</button>
         </form>
+</div>
+
     </div>
 
 <?php endforeach; ?>
@@ -213,11 +229,11 @@ th, td {
 </div>
 
 <script>
-    document.querySelectorAll('.accordion').forEach(btn => {
+    document.querySelectorAll('.accordion').forEach((btn, index) => {
         btn.addEventListener('click', () => {
             btn.classList.toggle('active');
             const content = btn.nextElementSibling;
-            content.style.display = (content.style.display === 'block') ? 'none' : 'block';
+            content.classList.toggle('active');
         });
     });
 </script>

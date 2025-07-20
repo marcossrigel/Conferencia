@@ -263,6 +263,11 @@
     console.log("JSON pesos líquidos:", JSON.stringify(balancas));
     }
 
+    document.querySelector("form").addEventListener("submit", function (e) {
+    const assinaturaBase64 = canvas.toDataURL("image/png");
+    document.getElementById("assinaturaBase64").value = assinaturaBase64;
+});
+
   </script>
 </body>
 </html>
