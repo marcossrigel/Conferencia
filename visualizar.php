@@ -41,6 +41,13 @@ h2 {
     max-width: 800px;
     margin: 0 auto;
 }
+.card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
 .accordion {
 background-color: white;
 border-radius: 10px;
@@ -138,6 +145,41 @@ th, td {
     color: red;
     font-weight: bold;
 }
+
+@media (max-width: 600px) {
+    .tables-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .table-wrapper {
+        min-width: 100%;
+    }
+
+    img.foto-entrega,
+    img.assinatura {
+        max-width: 100%;
+        height: auto;
+    }
+
+    button, .excluir-btn {
+        width: 100%;
+        margin: 8px 0;
+    }
+
+    .accordion, .accordion-content {
+        padding: 12px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
+}
+
 </style>
 </head>
 <body>

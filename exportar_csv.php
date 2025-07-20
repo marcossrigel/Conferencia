@@ -35,38 +35,41 @@ echo "\xEF\xBB\xBF"; // UTF-8 BOM
 $output = fopen('php://output', 'w');
 
 while ($linha = $resultado->fetch_assoc()) {
-    $etiquetas_array = json_decode($linha['etiquetas'], true);
-    $etiquetas_str = is_array($etiquetas_array) ? implode(', ', $etiquetas_array) : $linha['etiquetas'];
+    // Decodifica os vetores de etiquetas e pesos
+    $etiquetas_array = json_decode($linha['etiquetas'], true) ?? [];
+    $pesos_array = json_decode($linha['pesos_liquidos'], true) ?? [];
 
-    $peso_bruto = floatval($linha['peso_bruto']);
-    $tara = floatval($linha['tara']);
-    $peso_liquido = floatval($linha['peso_liquido']);
-    $div = floatval($linha['diferenca']);
-    $status = $linha['divergencia'];
+    $etiquetas_total = array_sum($etiquetas_array);
+    $pesos_total = array_sum($pesos_array);
 
-    // Monta os dados como pares [Campo, Valor]
+    $etiquetas_str = implode(', ', array_map(fn($n) => number_format($n, 2, ',', ''), $etiquetas_array)) . ", " . number_format($etiquetas_total, 2, ',', '');
+    $pesos_str = implode(', ', array_map(fn($n) => number_format($n, 2, ',', ''), $pesos_array)) . ", " . number_format($pesos_total, 2, ',', '');
+
+    // Outras variáveis
+    $tara_float = floatval($linha['tara_volume']);
+    $tara = fmod($tara_float, 1) == 0.0 ? number_format($tara_float, 0, ',', '') : number_format($tara_float, 3, ',', '');
+    $peso_liquido = number_format($linha['total_balanca'] - ($linha['num_volumes'] * $linha['tara_volume']), 2, ',', '');
+    $div = number_format($linha['diferenca'] ?? 0, 2, ',', '');
+    $status = $linha['divergencia'] ?? '-';
+
+    // Dados do CSV
     $dados = [
         ['Responsavel', $linha['nome_usuario']],
         ['Fornecedor', $linha['fornecedor']],
         ['Produto', $linha['produto']],
         ['Quantidade', $linha['quant_nf']],
         ['Etiquetas', $etiquetas_str],
-        ['Peso Balanca', number_format($peso_bruto, 2, ',', '')],
-        ['Tara', number_format($tara, 3, ',', '')],
-        ['Peso Liquido', number_format($peso_liquido, 2, ',', '')],
-        ['Divergencia', number_format($div, 2, ',', '')],
+        ['Pesos da Balança', $pesos_str],
+        ['Tara por Volume', $tara],
+        ['Peso Líquido', $peso_liquido],
+        ['Divergência', $div],
         ['Status', $status],
         ['Observacoes', $linha['observacoes']],
         ['Data Registro', date("d/m/Y H:i", strtotime($linha['data_registro']))],
     ];
 
     foreach ($dados as $linha_csv) {
-        // Remove aspas duplicadas e espaços extras
-        $linha_limpa = array_map(function($campo) {
-            return trim(str_replace('"', '', $campo));
-        }, $linha_csv);
-
-        fputcsv($output, $linha_limpa);
+        fputcsv($output, $linha_csv);
     }
 }
 
