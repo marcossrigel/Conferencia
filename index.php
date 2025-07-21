@@ -34,7 +34,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Monitoramento Creches</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#007bff">
+  
   <style>
     :root {
       --color-white: #ffffff;
@@ -173,7 +175,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <body>
 
-  
   <div class="container">
     <img src="logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">
     <div class="login-container">

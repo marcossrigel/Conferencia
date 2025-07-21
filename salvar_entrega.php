@@ -20,11 +20,22 @@ $tara_volume = str_replace(',', '.', $_POST['tara_volume']);
 $diferenca = str_replace(',', '.', preg_replace('/[^0-9,.-]/', '', $_POST['campoDiferenca']));
 $divergencia = $_POST['campoDivergencia'];
 $observacoes = $_POST['observacoes'];
-$assinatura_base64 = $_POST['assinatura_base64'] ?? '';
+$assinatura_base64 = $_POST['assinatura_base64'];
+$nome_completo = $_POST['nome_completo'];
 
 // Converte vetores para JSON (se vierem como variáveis JS, insira via hidden inputs depois)
 $etiquetas = isset($_POST['etiquetas']) ? $_POST['etiquetas'] : '[]';
 $pesos_liquidos = isset($_POST['pesos_liquidos']) ? $_POST['pesos_liquidos'] : '[]';
+
+$tara = floatval($tara_volume);
+$pesos_liquidos_array = json_decode($pesos_liquidos, true);
+
+$pesos_liquidos_corrigidos = array_map(function($peso) use ($tara) {
+    return floatval($peso) - $tara;
+}, $pesos_liquidos_array);
+
+// Re-encode para JSON antes de salvar no banco
+$pesos_liquidos = json_encode($pesos_liquidos_corrigidos);
 
 $total_etiquetas = str_replace(',', '.', preg_replace('/[^0-9,.-]/', '', $_POST['total_etiquetas'] ?? 0));
 $total_balanca = str_replace(',', '.', preg_replace('/[^0-9,.-]/', '', $_POST['total_balanca'] ?? 0));
@@ -41,11 +52,11 @@ if (!empty($_FILES['foto']['name'])) {
 $stmt = $conn->prepare("INSERT INTO entregas (
   id_usuario, fornecedor, nota_fiscal, produto, quant_nf, etiquetas, pesos_liquidos,
   total_etiquetas, total_balanca, num_volumes, tara_volume,
-  diferenca, divergencia, observacoes, foto_nome, assinatura_base64
+  diferenca, divergencia, observacoes, foto_nome, nome_completo
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 $stmt->bind_param(
-  "issssssddddsssss", // 16 caracteres
+  "issssssdddddssss",
   $id_usuario,
   $fornecedor,
   $nota_fiscal,
@@ -61,14 +72,13 @@ $stmt->bind_param(
   $divergencia,
   $observacoes,
   $foto_nome,
-  $assinatura_base64
+  $nome_completo
 );
 
 if ($stmt->execute()) {
-    echo "Entrega Realizada com Sucesso !";
-    // redirecionar ou exibir mensagem
+    echo "Entrega registrada com sucesso.";
+    header("Location: home.php");
 } else {
     echo "Erro ao salvar: " . $stmt->error;
 }
-
 ?>

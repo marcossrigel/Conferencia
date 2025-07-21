@@ -85,14 +85,13 @@
     <input type="hidden" name="total_balanca" id="hiddenTotalBalanca">
     <input type="hidden" name="campoDiferenca" id="hiddenDiferenca">
     <input type="hidden" name="campoDivergencia" id="hiddenDivergencia">
-    <input type="hidden" name="assinatura_base64" id="assinaturaBase64">
 
     <!-- Campos visíveis -->
     <label>Fornecedor</label>
-    <input type="text" name="fornecedor">
+    <input type="text" name="fornecedor" required>
 
     <label>Número da Nota Fiscal</label>
-    <input type="text" name="nota_fiscal" inputmode="numeric" pattern="[0-9]*">
+    <input type="text" name="nota_fiscal" required>
 
     <label>Produto</label>
     <input type="text" name="produto">
@@ -135,70 +134,19 @@
     <label>Foto</label>
     <input type="file" name="foto">
 
-    <label>Assinatura Digital</label>
-    <canvas id="signatureCanvas" width="400" height="150" style="border:1px solid #ccc; border-radius:5px; width:100%; touch-action: none;"></canvas>
-    <button type="button" class="btn-red" onclick="limparAssinatura()">Limpar Assinatura</button>
-
+    <div class="form-group">
+      <label for="nome_completo">Nome Completo do Responsável:</label>
+      <input type="text" id="nome_completo" name="nome_completo" required>
+    </div>
+    
     <button type="submit">Confirmar Entrega</button>
     <button type="button" style="margin-top: 10px;" onclick="window.location.href='home.php'">&lt; Voltar</button>
+
   </form>
 
   <script>
     let etiquetas = [];
     let balancas = [];
-
-    const canvas = document.getElementById('signatureCanvas');
-    const ctx = canvas.getContext('2d');
-    let desenhando = false;
-
-    function getPos(event) {
-      const rect = canvas.getBoundingClientRect();
-      return event.touches ? {
-        x: event.touches[0].clientX - rect.left,
-        y: event.touches[0].clientY - rect.top
-      } : {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      };
-    }
-
-    function iniciarDesenho(event) {
-      desenhando = true;
-      const pos = getPos(event);
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-    }
-
-    function desenhar(event) {
-      if (!desenhando) return;
-      const pos = getPos(event);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.stroke();
-    }
-
-    function pararDesenho() {
-      desenhando = false;
-      ctx.closePath();
-    }
-
-    function limparAssinatura() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // Eventos canvas
-    canvas.addEventListener('mousedown', iniciarDesenho);
-    canvas.addEventListener('mousemove', desenhar);
-    canvas.addEventListener('mouseup', pararDesenho);
-    canvas.addEventListener('mouseout', pararDesenho);
-    canvas.addEventListener('touchstart', iniciarDesenho);
-    canvas.addEventListener('touchmove', function(e) {
-      desenhar(e);
-      e.preventDefault();
-    }, { passive: false });
-    canvas.addEventListener('touchend', pararDesenho);
 
     function parseNumero(valor) {
       return parseFloat(valor.replace(",", "."));
@@ -230,7 +178,12 @@
 
       // Coletar peso da balança
       const valorBalanca = parseNumero(document.getElementById('pesoBalanca').value);
-      if (!isNaN(valorBalanca)) balancas.push(valorBalanca);
+      const taraVolume = parseNumero(document.querySelector('[name="tara_volume"]').value) || 0;
+
+      if (!isNaN(valorBalanca)) {
+        const pesoLiquido = valorBalanca - taraVolume;
+        balancas.push(pesoLiquido);
+      }
 
       // Cálculo total
       const totalEtiquetas = etiquetas.reduce((a, b) => a + b, 0);
@@ -251,20 +204,20 @@
       document.getElementById('hiddenTotalBalanca').value = totalBalanca;
       document.getElementById('hiddenDiferenca').value = diferenca.toFixed(2);
       document.getElementById('hiddenDivergencia').value = diferenca < 0 ? "Divergente" : "OK";
-      document.getElementById('assinaturaBase64').value = canvas.toDataURL();
 
       // Reset visual dos campos
       document.getElementById('etiquetasContainer').innerHTML = `
-        <label>Peso das Etiquetas</label>
-        <input type="text" class="etiqueta" placeholder="Ex: 12,5">
-      `;
-      document.getElementById('pesoBalanca').value = '';
-    console.log("Vetor de etiquetas:", etiquetas);
-    console.log("Vetor de pesos líquidos:", balancas);
-    console.log("JSON etiquetas:", JSON.stringify(etiquetas));
-    console.log("JSON pesos líquidos:", JSON.stringify(balancas));
-    }
+      <label>Peso das Etiquetas</label>
+      <input type="text" class="etiqueta" placeholder="Ex: 12,5" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
+    `;
 
+      document.getElementById('pesoBalanca').value = '';
+        console.log("Vetor de etiquetas:", etiquetas);
+        console.log("Vetor de pesos líquidos:", balancas);
+        console.log("JSON etiquetas:", JSON.stringify(etiquetas));
+        console.log("JSON pesos líquidos:", JSON.stringify(balancas));
+      }
+      
   </script>
 </body>
 </html>
