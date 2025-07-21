@@ -20,7 +20,7 @@ $tara_volume = str_replace(',', '.', $_POST['tara_volume']);
 $diferenca = str_replace(',', '.', preg_replace('/[^0-9,.-]/', '', $_POST['campoDiferenca']));
 $divergencia = $_POST['campoDivergencia'];
 $observacoes = $_POST['observacoes'];
-$assinatura_base64 = $_POST['assinatura_base64'];
+$assinatura_base64 = $_POST['assinatura_base64'] ?? '';
 
 // Converte vetores para JSON (se vierem como variáveis JS, insira via hidden inputs depois)
 $etiquetas = isset($_POST['etiquetas']) ? $_POST['etiquetas'] : '[]';
@@ -45,7 +45,7 @@ $stmt = $conn->prepare("INSERT INTO entregas (
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 $stmt->bind_param(
-  "issssssdddddssss",
+  "issssssddddsssss", // 16 caracteres
   $id_usuario,
   $fornecedor,
   $nota_fiscal,
@@ -65,9 +65,10 @@ $stmt->bind_param(
 );
 
 if ($stmt->execute()) {
-    echo "Entrega registrada com sucesso.";
+    echo "Entrega Realizada com Sucesso !";
     // redirecionar ou exibir mensagem
 } else {
     echo "Erro ao salvar: " . $stmt->error;
 }
+
 ?>

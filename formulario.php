@@ -72,42 +72,6 @@
         padding: 10px;
       }
     }
-    #modalSucesso {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    .modal-content {
-      background: white;
-      padding: 30px 20px;
-      border-radius: 10px;
-      text-align: center;
-      max-width: 320px;
-      width: 90%;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-
-    .modal-content h3 {
-      margin-bottom: 20px;
-      font-weight: 500;
-      font-size: 18px;
-    }
-
-    .modal-content button {
-      padding: 10px 20px;
-      border: none;
-      background-color: #007bff;
-      color: white;
-      border-radius: 5px;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
   </style>
 </head>
 <body>
@@ -128,13 +92,13 @@
     <input type="text" name="fornecedor">
 
     <label>Número da Nota Fiscal</label>
-    <input type="text" name="nota_fiscal">
+    <input type="text" name="nota_fiscal" inputmode="numeric" pattern="[0-9]*">
 
     <label>Produto</label>
     <input type="text" name="produto">
 
     <label>Quantidade a Receber (NF)</label>
-    <input type="text" name="quant_nf" inputmode="numeric" pattern="[0-9]*">
+    <input type="text" name="quant_nf" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
 
     <div id="etiquetasContainer">
       <label>Peso das Etiquetas</label>
@@ -178,13 +142,6 @@
     <button type="submit">Confirmar Entrega</button>
     <button type="button" style="margin-top: 10px;" onclick="window.location.href='home.php'">&lt; Voltar</button>
   </form>
-
-<div id="modalSucesso" style="display:none;">
-<div class="modal-content">
-  <h3>✅ Entrega realizada com sucesso!</h3>
-  <button onclick="fecharModal()">Continuar</button>
-</div>
-</div>
 
   <script>
     let etiquetas = [];
@@ -252,17 +209,16 @@
     }
 
     function adicionarCampoEtiqueta() {
-    const container = document.getElementById('etiquetasContainer');
-    const novoInput = document.createElement('input');
-    novoInput.type = 'text';
-    novoInput.className = 'etiqueta';
-    novoInput.placeholder = 'Ex: 12,5';
-    novoInput.style.marginTop = '5px';
-    novoInput.setAttribute('inputmode', 'decimal');
-    novoInput.setAttribute('pattern', '[0-9]*[.,]?[0-9]*');
-    container.appendChild(novoInput);
-  }
-
+      const container = document.getElementById('etiquetasContainer');
+      const novoInput = document.createElement('input');
+      novoInput.type = 'text';
+      novoInput.className = 'etiqueta';
+      novoInput.placeholder = 'Ex: 12,5';
+      novoInput.inputMode = 'decimal';
+      novoInput.pattern = '[0-9]*[.,]?[0-9]*';
+      novoInput.style.marginTop = '5px';
+      container.appendChild(novoInput);
+    }
 
     function salvarResultadoParcial() {
       // Coletar etiquetas
@@ -300,8 +256,7 @@
       // Reset visual dos campos
       document.getElementById('etiquetasContainer').innerHTML = `
         <label>Peso das Etiquetas</label>
-        <input type="text" class="etiqueta" placeholder="Ex: 12,5" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
-
+        <input type="text" class="etiqueta" placeholder="Ex: 12,5">
       `;
       document.getElementById('pesoBalanca').value = '';
     console.log("Vetor de etiquetas:", etiquetas);
@@ -309,51 +264,6 @@
     console.log("JSON etiquetas:", JSON.stringify(etiquetas));
     console.log("JSON pesos líquidos:", JSON.stringify(balancas));
     }
-
-document.querySelector("form").addEventListener("submit", function (e) {
-  e.preventDefault(); // Impede envio imediato
-  const assinaturaBase64 = canvas.toDataURL("image/png");
-  document.getElementById("assinaturaBase64").value = assinaturaBase64;
-
-  // Mostra o modal de sucesso
-  document.getElementById("modalSucesso").style.display = "flex";
-});
-
-function fecharModal() {
-  document.getElementById("modalSucesso").style.display = "none";
-
-  // Limpa o formulário
-  const form = document.querySelector("form");
-  form.reset();
-
-  // Limpa os campos de visualização
-  document.getElementById('totalEtiquetas').value = "0,00 kg";
-  document.getElementById('totalBalanca').value = "0,00 kg";
-  document.getElementById('campoDiferenca').value = "";
-  document.getElementById('campoDivergencia').value = "";
-
-  // Zera os vetores
-  etiquetas = [];
-  balancas = [];
-
-  // Limpa campos ocultos
-  document.getElementById('inputEtiquetas').value = "";
-  document.getElementById('inputPesosLiquidos').value = "";
-  document.getElementById('hiddenTotalEtiquetas').value = "";
-  document.getElementById('hiddenTotalBalanca').value = "";
-  document.getElementById('hiddenDiferenca').value = "";
-  document.getElementById('hiddenDivergencia').value = "";
-  document.getElementById('assinaturaBase64').value = "";
-
-  // Limpa canvas
-  limparAssinatura();
-
-  // Restaura apenas um campo de etiqueta
-  document.getElementById('etiquetasContainer').innerHTML = `
-    <label>Peso das Etiquetas</label>
-    <input type="text" class="etiqueta" placeholder="Ex: 12,5" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
-  `;
-}
 
   </script>
 </body>
