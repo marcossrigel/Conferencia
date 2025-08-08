@@ -176,7 +176,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
   <div class="container">
-    <img src="logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">
+    <img src="uploads/logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">
     <div class="login-container">
       <div class="main-title">Entrar</div>
       

@@ -237,7 +237,7 @@ a.texto-login:hover {
   
   <div class="header">
     <div class="header-text">
-    <img src="logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">  
+    <img src="uploads/logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">  
       <h1>Chamados</h1>
       <p>Registre e acompanhe solicitações de forma simples e organizada.</p>
     </div>

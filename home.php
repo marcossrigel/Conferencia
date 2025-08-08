@@ -237,7 +237,7 @@ a.texto-login:hover {
   
   <div class="header">
     <div class="header-text">
-    <img src="logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">  
+    <img src="uploads/logo.png" style="width: 120px; margin-bottom: 20px;" alt="Logo da Masterboi">  
       <h1>Conferência de Entregas</h1>
       <p>Organize e cadastre suas informações com eficiência e facilidade.</p>
     </div>
