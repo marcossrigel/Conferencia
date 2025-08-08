@@ -1,33 +1,36 @@
 <?php
-header('Content-Type: application/json');
+// salvar_chamado.php
+header('Content-Type: application/json; charset=utf-8');
 
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "abertura_chamado";
+ini_set('display_errors', 0);        // não vaze avisos/HTML na resposta
+error_reporting(E_ALL);
 
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    echo json_encode(["ok" => false, "erro" => "Falha na conexão com o banco"]);
+require_once 'config.php';           // $conn = new mysqli(...)
+
+$raw = file_get_contents('php://input');
+$data = json_decode($raw, true);
+
+if (!is_array($data)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'erro' => 'Payload inválido (JSON).']);
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"), true);
+$titulo     = trim($data['titulo']     ?? '');
+$descricao  = trim($data['descricao']  ?? '');
+$quem_abriu = trim($data['quem_abriu'] ?? '');
 
-if (empty($data['titulo']) || empty($data['descricao']) || empty($data['quem_abriu'])) {
-    echo json_encode(["ok" => false, "erro" => "Todos os campos são obrigatórios"]);
+if ($titulo === '' || $descricao === '' || $quem_abriu === '') {
+    http_response_code(422);
+    echo json_encode(['ok' => false, 'erro' => 'Preencha título, descrição e quem abriu.']);
     exit;
 }
 
-$stmt = $conn->prepare("INSERT INTO chamados (titulo, descricao, quem_abriu) VALUES (?, ?, ?)");
-$stmt->bind_param("sss", $data['titulo'], $data['descricao'], $data['quem_abriu']);
+$stmt = $conn->prepare("
+    INSERT INTO chamados (titulo, descricao, quem_abriu, `status`, criado_em, atualizado_em)
+    VALUES (?, ?, ?, 'aberto', NOW(), NOW())
+");
+$stmt->bind_param('sss', $titulo, $descricao, $quem_abriu);
+$stmt->execute();
 
-if ($stmt->execute()) {
-    echo json_encode(["ok" => true, "id" => $stmt->insert_id]);
-} else {
-    echo json_encode(["ok" => false, "erro" => "Erro ao inserir chamado"]);
-}
-
-$stmt->close();
-$conn->close();
-?>
+echo json_encode(['ok' => true, 'id' => $stmt->insert_id]);

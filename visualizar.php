@@ -10,27 +10,19 @@ if (!isset($_SESSION['id_usuario'])) {
 $id_fornecedor = $_SESSION['id_usuario'];
 $tipo_usuario = $_SESSION['tipo_usuario'] ?? 'fornecedor';
 
-if ($tipo_usuario === 'admin') {
-    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
-              FROM entregas 
-              JOIN usuarios ON entregas.id_usuario = usuarios.id 
-              ORDER BY entregas.id DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-} else {
-    $query = "SELECT entregas.*, usuarios.nome AS nome_usuario 
-              FROM entregas 
-              JOIN usuarios ON entregas.id_usuario = usuarios.id 
-              WHERE entregas.id_usuario = ? 
-              ORDER BY entregas.id DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $id_fornecedor);
-    $stmt->execute();
-}
+$id_usuario = $_SESSION['id_usuario'];
 
+$query = "SELECT e.*, u.nome AS nome_usuario
+          FROM entregas e
+          JOIN usuarios u ON e.id_usuario = u.id
+          WHERE e.id_usuario = ?
+          ORDER BY e.id DESC";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $id_usuario);
+$stmt->execute();
 $resultado = $stmt->get_result();
-?>
 
+?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -324,10 +316,7 @@ $resultado = $stmt->get_result();
 
   <p><strong>Assinado por:</strong> <?= htmlspecialchars($entrega['nome_completo']) ?></p>
 
-    <button 
-      type="button"
-      class="btn-excluir"
-      data-id="<?= $entrega['id'] ?>"
+    <button type="button" class="btn-excluir" data-id="<?= $entrega['id'] ?>"
       style="margin: 10px 18px; padding: 8px 12px; background-color: #ff4d4d; color: white; border: none; border-radius: 8px; cursor: pointer;">
       🗑 Excluir
     </button>
@@ -350,7 +339,7 @@ $resultado = $stmt->get_result();
 <div class="modal-overlay" id="confirmModal">
   <div class="modal">
     <p>Tem certeza que deseja excluir esta entrega?</p>
-    <form id="deleteForm" method="get" action="excluir_entrega.php">
+    <form id="deleteForm" method="post" action="excluir_entrega.php">
       <input type="hidden" name="id" id="deleteId">
       <button type="submit" class="confirm">Sim, excluir</button>
       <button type="button" class="cancel" onclick="fecharModal()">Cancelar</button>
