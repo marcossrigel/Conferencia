@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['nome'] = $user['nome'];
         $_SESSION['tipo_usuario'] = $user['tipo'];
 
-        header("Location: home.php");
+        header("Location: home_sistemas.php");
         exit;
     } else {
         $erro_login = "CPF não encontrado.";

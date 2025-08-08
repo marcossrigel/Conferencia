@@ -245,7 +245,7 @@ a.texto-login:hover {
     <div class="button-group">
       <a href="formulario.php" class="btn">Entregas</a>
       <a href="visualizar.php" class="btn btn-secondary">Minhas Entregas</a>
-      <a href="index.php" class="texto-login">Sair</a>
+      <a href="home_sistemas.php" class="texto-login">Sair</a>
     </div>
   </div>
 
