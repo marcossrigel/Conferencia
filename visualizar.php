@@ -308,15 +308,21 @@ $resultado = $stmt->get_result();
 
   <p><strong>Observações:</strong> <?= htmlspecialchars($entrega['observacoes']) ?></p>
 
+  <?php if (!empty($entrega['foto_nome'])): ?>
+  <p><strong>Foto:</strong><br>
+    <img src="uploads/<?= htmlspecialchars($entrega['foto_nome']) ?>" 
+         alt="Foto da entrega" 
+         style="max-width:300px; margin-top:10px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  </p>
+  <?php else: ?>
+    <p><strong>Foto:</strong> Nenhuma foto registrada.</p>
+  <?php endif; ?>
+
   <?php if (!empty($entrega['foto'])): ?>
     <p><strong>Foto:</strong><br><img src="uploads/<?= $entrega['foto'] ?>" width="200" style="margin-top:10px;"></p>
   <?php endif; ?>
 
-  <?php if (!empty($entrega['assinatura_base64'])): ?>
-    <p><strong>Assinatura:</strong><br>
-      <img src="<?= htmlspecialchars($entrega['assinatura_base64']) ?>" width="200">
-    </p>
-  <?php endif; ?>
+  <p><strong>Assinado por:</strong> <?= htmlspecialchars($entrega['nome_completo']) ?></p>
 
     <button 
       type="button"
