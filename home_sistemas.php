@@ -148,16 +148,23 @@ $nome = $_SESSION['nome'] ?? 'Usuário';
 
     <section class="grid" aria-label="Lista de sistemas">
         <a class="card" href="home.php">
-        <div class="icon">📦</div>
-        <div class="name">Conferência</div>
-        <div class="desc">Recebimento e divergências</div>
+          <div class="icon">📦</div>
+          <div class="name">Conferência</div>
+          <div class="desc">Recebimento e divergências</div>
+        </a>
+
+        <a class="card" href="planilha.php">
+          <div class="icon">📈</div>
+          <div class="name">Planilha</div>
+          <div class="desc">Dados e Registro</div>
         </a>
 
         <a class="card" href="home_chamados.php">
-        <div class="icon">🧾</div>
-        <div class="name">Chamados</div>
-        <div class="desc">Abertura e acompanhamento</div>
+          <div class="icon">🧾</div>
+          <div class="name">Chamados</div>
+          <div class="desc">Abertura e acompanhamento</div>
         </a>
+
     </section>
 
     <form action="logout.php" method="post" class="footer">

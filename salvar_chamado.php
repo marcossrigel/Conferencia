@@ -1,11 +1,10 @@
 <?php
-// salvar_chamado.php
 header('Content-Type: application/json; charset=utf-8');
 
-ini_set('display_errors', 0);        // não vaze avisos/HTML na resposta
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-require_once 'config.php';           // $conn = new mysqli(...)
+require_once 'config.php';
 
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
@@ -33,4 +32,32 @@ $stmt = $conn->prepare("
 $stmt->bind_param('sss', $titulo, $descricao, $quem_abriu);
 $stmt->execute();
 
-echo json_encode(['ok' => true, 'id' => $stmt->insert_id]);
+$id_chamado = $stmt->insert_id;
+
+try {
+    $notifyUrl = 'https://SEU_DOMINIO/notificacao_teams.php';
+    $tokenSeguranca = 'COLOQUE_UM_TOKEN_FORTE_AQUI';
+
+    $post = http_build_query([
+        'token'      => $tokenSeguranca,
+        'id'         => $id_chamado,
+        'titulo'     => $titulo,
+        'descricao'  => $descricao,
+        'quem_abriu' => $quem_abriu,
+    ]);
+
+    $ch = curl_init($notifyUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $post,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT        => 3,
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+} catch (\Throwable $e) {
+    
+}
+
+echo json_encode(['ok' => true, 'id' => $id_chamado]);
